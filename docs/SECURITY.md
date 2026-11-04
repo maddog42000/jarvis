@@ -182,8 +182,10 @@ next to the fields. No key, no data sent.
 Keystore-backed secrets (same allowlist and posture). With a key set, a web search Gemini
 grounding couldn't answer sends **the search query** to Tavily; no key, nothing sent. On
 launch, at most once a day, the app GETs
-`https://api.github.com/repos/AnaaySampat/jarvis/releases/latest` — no credentials and no
-user data, but GitHub sees the phone's IP. The HTTP scope allows exactly that URL.
+`https://api.github.com/repos/maddog42000/jarvis/releases/latest` — no credentials and no
+user data, but GitHub sees the phone's IP. If beta updates are enabled, it instead reads
+`https://api.github.com/repos/maddog42000/jarvis/releases?per_page=20`. The HTTP scope
+allows exactly those two release endpoints.
 
 **Changed 2026-09-23 — the phone operator loop is native** (`OperatorCore.kt`). Two
 consequences worth knowing:

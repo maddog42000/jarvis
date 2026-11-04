@@ -8,12 +8,12 @@ Say **“Hey Jarvis”**, type a request, or choose a specialist agent.
 
 The [ecosystem foundation preview](docs/ECOSYSTEM-IMPLEMENTATION.md) adds conversation
 task recovery, Health and private diagnostics. Enable it explicitly in Settings →
-Ecosystem Health → Foundation preview. The existing release remains available;
-later ecosystem milestones await the recorded live acceptance gate.
+Ecosystem Health → Foundation preview. Stable promotion in this fork remains gated by
+the recorded live acceptance checks; the first fork build is a pre-release.
 
-**[Download for Android](https://github.com/AnaaySampat/jarvis/releases/latest)**
+**[Download for Android](https://github.com/maddog42000/jarvis/releases)**
 · [Get started](#get-started)
-· [What's new in v2.5.0](https://github.com/AnaaySampat/jarvis/releases/tag/v2.5.0)
+· [What's new in v2.5.0](docs/releases/v2.5.0.md)
 · [Windows companion](https://github.com/AnaaySampat/jarvis-windows)
 
 <table align="center">
@@ -149,9 +149,9 @@ verification codes are redacted from notification text.
 
 ## Get started
 
-**Android 7.0+ · 64-bit ARM · Current release: v2.5.0**
+**Android 7.0+ · 64-bit ARM · Fork build: v2.5.2-beta.1 (pre-release)**
 
-1. **[Download the latest APK](https://github.com/AnaaySampat/jarvis/releases/latest)**
+1. **[Download the APK](https://github.com/maddog42000/jarvis/releases)**
    and install it on your phone.
 2. **Connect an AI provider** during setup. Add a key from
    [Google AI Studio](https://aistudio.google.com/) or [Groq](https://console.groq.com/),
@@ -264,20 +264,30 @@ so it can still be sideloaded. `src-tauri/gen/android` is committed on purpose �
 carries hand-made settings (`allowBackup="false"`, the release cleartext rule, signing) that a fresh
 `tauri android init` would drop.
 
-## Releasing
+## Releasing and installing updates
 
-Bump `version` in `jarvis-studio-gui/package.json` and `src-tauri/tauri.conf.json`,
-commit, then tag and push: `git tag v2.5.0 && git push origin v2.5.0`. The Release
-workflow (`.github/workflows/release.yml`) checks the app (typecheck, lint, tests),
-builds a signed arm64 APK and publishes it as a GitHub release, which the app's update
-notice then offers. It refuses a tag that doesn't match the version.
+The current fork build is a **pre-release** because stable promotion is deliberately
+blocked until the live phone/PC acceptance gate is complete. Install its APK from the
+[Releases page](https://github.com/maddog42000/jarvis/releases). To receive later
+pre-release notices, enable **Settings → System → Include beta updates**. Stable releases
+will be checked automatically once published; the notice opens GitHub so you can review
+and install the APK yourself.
 
-It needs the key the installed app is signed with, as repository secrets:
-`ANDROID_KEYSTORE_BASE64` (the keystore, base64), `ANDROID_KEY_ALIAS` and
-`ANDROID_KEYSTORE_PASSWORD`. Without them nothing is published — an APK signed with
-another key can't update the app. (Built locally with the debug keystore so far? That's
-`~/.android/debug.keystore`, alias `androiddebugkey`, password `android`.) "Run workflow"
-on the Actions tab does a dry run with no release.
+For a quick test build on a phone, open **Actions → Build APK → Run workflow** and
+download the `jarvis-apk` artifact from the finished run. It is a debug APK for testing,
+not the signed update channel; debug builds are not guaranteed to update one another.
+
+For a release, update the version in `package.json`, the package-lock root metadata and
+`src-tauri/tauri.conf.json` together, commit and push, then push a matching tag (for example
+`v2.5.2-beta.2`). The Release workflow runs tests, builds a signed arm64 APK, and attaches
+it to a GitHub release. A tag without a hyphen is a stable release and must pass the
+foundation acceptance gate; a hyphenated tag is a pre-release.
+
+The workflow uses the repository secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS`
+and `ANDROID_KEYSTORE_PASSWORD`. **Keep the keystore and its password backed up privately.**
+Every future APK must use the same signing key or Android will reject it as an update. The
+app checks this fork's GitHub releases and offers a notification; installation remains a
+user-confirmed Android sideload.
 
 ## Keys and security
 

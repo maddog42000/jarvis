@@ -45,7 +45,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: jarvis-studio-gui/package-lock.json
       - uses: actions/setup-java@v4
@@ -114,13 +114,17 @@ jobs:
             source=src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk
           fi
           cp "$source" "$name"
+          sha256sum "$name" > "$name.sha256"
           echo "APK=jarvis-studio-gui/$name" >> "$GITHUB_ENV"
+          echo "APK_CHECKSUM=jarvis-studio-gui/$name.sha256" >> "$GITHUB_ENV"
 
       - name: Publish the release
         if: env.PUBLISH == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ env.APK }}
+          files: |
+            ${{ env.APK }}
+            ${{ env.APK_CHECKSUM }}
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
 
@@ -129,4 +133,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.APK_UNSIGNED == 'true' && 'jarvis-unsigned-release-apk' || 'jarvis-release-apk' }}
-          path: ${{ env.APK }}
+          path: |
+            ${{ env.APK }}
+            ${{ env.APK_CHECKSUM }}

@@ -31,6 +31,16 @@ describe("isNewer", () => {
 });
 
 describe("checkForUpdate", () => {
+  it("checks stable and beta updates from the fork's release endpoints", async () => {
+    getJson.mockResolvedValue({ tag_name: "v2.5.3", html_url: "https://github.com/maddog42000/jarvis/releases/tag/v2.5.3" });
+    await checkForUpdate("2.5.2", T0);
+    expect(getJson.mock.calls[0][0]).toBe("https://api.github.com/repos/maddog42000/jarvis/releases/latest");
+
+    getJson.mockResolvedValue([{ tag_name: "v2.5.2-beta.2", prerelease: true }]);
+    await checkForUpdate("2.5.2-beta.1", T0, "beta");
+    expect(getJson.mock.calls[1][0]).toBe("https://api.github.com/repos/maddog42000/jarvis/releases?per_page=20");
+  });
+
   it("keeps beta opt-in, with a separate check window and correct prerelease ordering", async () => {
     getJson.mockResolvedValue({ tag_name: "v2.5.0-beta.1", prerelease: true });
     expect(await checkForUpdate("2.4.0", T0)).toBeNull();

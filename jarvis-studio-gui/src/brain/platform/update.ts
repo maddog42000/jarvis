@@ -7,9 +7,9 @@
 
 import { getJson } from "../tools/httpClient";
 
-export const RELEASES_URL = "https://github.com/AnaaySampat/jarvis/releases/latest";
-const LATEST_API = "https://api.github.com/repos/AnaaySampat/jarvis/releases/latest";
-const RELEASES_API = "https://api.github.com/repos/AnaaySampat/jarvis/releases?per_page=20";
+export const RELEASES_URL = "https://github.com/maddog42000/jarvis/releases";
+const LATEST_API = "https://api.github.com/repos/maddog42000/jarvis/releases/latest";
+const RELEASES_API = "https://api.github.com/repos/maddog42000/jarvis/releases?per_page=20";
 export type UpdateChannel = "stable" | "beta";
 const CHECKED_KEY = "jarvis.update.checkedAt";
 const DAY_MS = 24 * 60 * 60 * 1000;
