@@ -10,7 +10,7 @@ import Sheet from "./Sheet";
 import Icon from "./Icon";
 import { Switch, ConfirmButton, AddField } from "./controls";
 import { IS_MOBILE } from "../hooks/useAssistant";
-import { DEFAULT_LOOK, moveInColumn, THEMES } from "../brain/mobile/screenConfig";
+import { CENTERPIECE_IMAGE_MAX, DEFAULT_LOOK, moveInColumn, THEMES } from "../brain/mobile/screenConfig";
 
 const SWATCHES = [
   "cyan",
@@ -44,6 +44,7 @@ const LOOK_KEYS = [
   "accent2",
   "background",
   "image",
+  "centerpieceImage",
   "font",
   "corners",
   "glow",
@@ -158,14 +159,24 @@ function useLivePatch(screen, onPatch) {
 
 /* A picture for the background, shrunk to a ≤1280px JPEG so it fits the phone's
    storage cap (screenConfig.ts). */
-async function shrinkImage(file) {
+async function shrinkImage(file, maxEdge = 1280, outputType = "image/jpeg") {
   const bmp = await createImageBitmap(file);
-  const k = Math.min(1, 1280 / Math.max(bmp.width, bmp.height));
+  if (!bmp.width || !bmp.height || bmp.width * bmp.height > 40_000_000) {
+    bmp.close?.();
+    throw new Error("Image dimensions are too large");
+  }
+  const k = Math.min(1, maxEdge / Math.max(bmp.width, bmp.height));
   const c = document.createElement("canvas");
   c.width = Math.round(bmp.width * k);
   c.height = Math.round(bmp.height * k);
-  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
-  return c.toDataURL("image/jpeg", 0.82);
+  const ctx = c.getContext("2d");
+  if (!ctx) {
+    bmp.close?.();
+    throw new Error("Canvas is unavailable");
+  }
+  ctx.drawImage(bmp, 0, 0, c.width, c.height);
+  bmp.close?.();
+  return c.toDataURL(outputType, 0.82);
 }
 
 // ponytail: the desktop also saves a theme to a file to share; an Android WebView has
@@ -189,6 +200,7 @@ export default function Customize({ screen, onClose, onPatch }) {
   const [s, live] = useLivePatch(screen, onPatch);
   const [error, setError] = useState("");
   const picture = useRef(null);
+  const centerpiecePicture = useRef(null);
   const themeFile = useRef(null);
   const panels = s.panels || {};
   const accent = (s.accent || "#00e5ff").toLowerCase();
@@ -210,6 +222,23 @@ export default function Customize({ screen, onClose, onPatch }) {
       setError("");
     } catch {
       setError("That picture couldn't be opened — try a JPEG or PNG.");
+    }
+  };
+  const chooseCenterpiece = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > 8_000_000) {
+      setError("Choose a PNG, JPEG, or WebP image under 8 MB.");
+      return;
+    }
+    try {
+      const data = await shrinkImage(file, 768, "image/webp");
+      if (data.length > CENTERPIECE_IMAGE_MAX) throw new Error("Resized image exceeds storage limit");
+      onPatch({ centerpieceImage: data });
+      setError("");
+    } catch {
+      setError("That picture could not be used. Try a smaller PNG, JPEG, or WebP.");
     }
   };
   const importTheme = async (e) => {
@@ -336,6 +365,22 @@ export default function Customize({ screen, onClose, onPatch }) {
 
         <section className="cz-sec">
           <h3>Colours</h3>
+          <p className="cz-note">Choose a coordinated accent palette.</p>
+          <div className="cz-presets cz-color-themes" role="group" aria-label="Color theme presets">
+            {Object.entries(THEMES).map(([name, [primary, secondary]]) => (
+              <button
+                key={name}
+                type="button"
+                className="cz-preset cz-color-theme"
+                style={{ "--sw": primary, "--sw2": secondary }}
+                aria-label={`${name} color theme`}
+                aria-pressed={accent === primary}
+                onClick={() => onPatch({ accent: primary, accent2: secondary })}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
           <div className="cz-colors">
             <div className="cz-swatches" role="radiogroup" aria-label="Accent colour">
               {SWATCHES.map((name) => {
@@ -415,6 +460,39 @@ export default function Customize({ screen, onClose, onPatch }) {
           </div>
         </section>
 
+        <section className="cz-sec">
+          <h3>Centrepiece image</h3>
+          <p className="cz-note">
+            Optional still image displayed inside the orb. Stored on this device only.
+          </p>
+          <div className="cz-preset-bar">
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => centerpiecePicture.current?.click()}
+            >
+              <Icon name="image" size={14} />
+              {s.centerpieceImage ? "Choose another image…" : "Choose image…"}
+            </button>
+            {s.centerpieceImage && (
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => onPatch({ centerpieceImage: "" })}
+              >
+                Remove image
+              </button>
+            )}
+            <input
+              ref={centerpiecePicture}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              hidden
+              onChange={chooseCenterpiece}
+              aria-label="Choose a centerpiece image"
+            />
+          </div>
+        </section>
         <section className="cz-sec">
           <h3>Background</h3>
           <div className="cz-bgs" role="radiogroup" aria-label="Background">

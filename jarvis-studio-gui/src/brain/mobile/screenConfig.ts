@@ -12,6 +12,7 @@ export interface ScreenLook {
   rgb?: Rgb;
   background?: string;
   image?: string;
+  centerpieceImage?: string;
   font?: string;
   cards?: string;
   core?: string;
@@ -65,6 +66,7 @@ const LOOK_KEYS = [
   "accent2",
   "background",
   "image",
+  "centerpieceImage",
   "font",
   "corners",
   "glow",
@@ -104,6 +106,8 @@ const HEX6 = /^#[0-9a-f]{6}$/;
 // half the desktop's 4 MB; move the picture to a file if people want bigger ones.
 const IMAGE = /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/;
 const IMAGE_MAX = 2_000_000;
+export const CENTERPIECE_IMAGE_MAX = 1_000_000;
+const CENTERPIECE_IMAGE = /^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/;
 
 const hexRgb = (hex: string): Rgb => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as Rgb;
 
@@ -157,6 +161,15 @@ export function cleanLook(d: unknown): ScreenLook {
   if (img === "" || (typeof img === "string" && img.length <= IMAGE_MAX && IMAGE.test(img))) {
     out.image = img;
   }
+  const centerpiece = src.centerpieceImage;
+  if (
+    centerpiece === "" ||
+    (typeof centerpiece === "string" &&
+      centerpiece.length <= CENTERPIECE_IMAGE_MAX &&
+      CENTERPIECE_IMAGE.test(centerpiece))
+  ) {
+    out.centerpieceImage = centerpiece;
+  }
   if (out.accent) out.rgb = hexRgb(out.accent as string);
   return out as ScreenLook;
 }
@@ -193,9 +206,16 @@ export function loadScreenConfig(): ScreenConfig | null {
   }
 }
 
+/** Return only a validated, bounded local image URL; never accept user-supplied URLs. */
+export function loadCenterpieceImage(): string {
+  const image = cleanLook(loadScreenConfig()).centerpieceImage;
+  return typeof image === "string" && image.startsWith("data:image/webp;base64,") ? image : "";
+}
+
 function saveScreenConfig(cfg: ScreenConfig): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(cfg));
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("jarvis-screen-config-change"));
   } catch {
     /* quota */
   }
@@ -213,7 +233,10 @@ export function patchScreenConfig(patch: ScreenPatch): ScreenConfig {
     const kept: ScreenConfig = prev.presets?.length ? { presets: prev.presets } : {};
     try {
       if (kept.presets) saveScreenConfig(kept);
-      else localStorage.removeItem(KEY);
+      else {
+        localStorage.removeItem(KEY);
+        if (typeof window !== "undefined") window.dispatchEvent(new Event("jarvis-screen-config-change"));
+      }
     } catch {
       /* storage unavailable — nothing persisted to clear */
     }

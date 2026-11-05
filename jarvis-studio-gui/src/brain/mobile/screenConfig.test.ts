@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { applyScreenAction, cleanLook, moveInColumn, patchScreenConfig } from "./screenConfig";
+import {
+  applyScreenAction,
+  CENTERPIECE_IMAGE_MAX,
+  cleanLook,
+  loadCenterpieceImage,
+  moveInColumn,
+  patchScreenConfig,
+} from "./screenConfig";
 import { toolPalette } from "../tools/registry";
 
 /** Minimal Storage stub — this suite runs in node, which has no localStorage.
@@ -171,6 +178,18 @@ describe("the look (desktop clean_look / set_screen)", () => {
 
   it("one colour picked derives a lighter second one", () => {
     expect(patchScreenConfig({ accent: "#000000" }).accent2).toBe("#6b6b6b");
+  });
+
+  it("accepts only a small, local WebP data URL for the centerpiece", () => {
+    const localImage = "data:image/webp;base64,AAAA";
+    expect(cleanLook({ centerpieceImage: localImage }).centerpieceImage).toBe(localImage);
+    expect(cleanLook({ centerpieceImage: "https://example.test/image.webp" })).toEqual({});
+    expect(cleanLook({ centerpieceImage: "data:image/png;base64,AAAA" })).toEqual({});
+    expect(
+      cleanLook({ centerpieceImage: `data:image/webp;base64,${"A".repeat(CENTERPIECE_IMAGE_MAX)}` }),
+    ).toEqual({});
+    patchScreenConfig({ centerpieceImage: localImage });
+    expect(loadCenterpieceImage()).toBe(localImage);
   });
 
   it("saves the current look as a theme, applies it by name, and deletes it", () => {

@@ -1,9 +1,23 @@
+import { useEffect, useState } from "react";
+import { loadCenterpieceImage } from "../brain/mobile/screenConfig";
+
 /* Orb.jsx — JARVIS's presence on the home screen: soft colour fields swirling in a
    sphere, in the theme's accent. Its motion says what JARVIS is doing (slow when
    idle, ripples while listening, an orbiting arc while thinking or working, a pulse
    while speaking). Pure CSS animation (home.css), so it costs no JS per frame. */
 
 export default function Orb({ status = "idle", label, onClick }) {
+  const [still, setStill] = useState("");
+  useEffect(() => {
+    const refresh = () => setStill(loadCenterpieceImage());
+    refresh();
+    window.addEventListener("jarvis-screen-config-change", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("jarvis-screen-config-change", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
   return (
     <button
       type="button"
@@ -23,6 +37,7 @@ export default function Orb({ status = "idle", label, onClick }) {
           <span className="orb-blob orb-blob--c" />
         </span>
         <span className="orb-shine" />
+        {still && <img className="orb-still" src={still} alt="" draggable="false" />}
       </span>
     </button>
   );

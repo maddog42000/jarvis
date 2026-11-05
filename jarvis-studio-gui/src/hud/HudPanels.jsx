@@ -7,6 +7,7 @@ import { IS_MOBILE } from "../hooks/useAssistant";
 import ResponseRenderer from "../components/ResponseRenderer";
 import Icon from "../components/Icon";
 import StateMessage from "../components/StateMessage";
+import ChatSpeechTransport from "../components/ChatSpeechTransport";
 import Sheet, { ActionRow, Field, Group, HeaderButton, Toggle } from "../components/Sheet";
 import { useAndroidBack } from "../hooks/useAndroidBack";
 import { digestEnabled, setDigestEnabled } from "../brain/memory/digest";
@@ -1088,6 +1089,8 @@ export function ChatOverlay({
   const bodyRef = useRef(null);
   const fileRef = useRef(null);
   const inputRef = useRef(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const progressStartedAt = useRef(null);
 
   // A Capabilities example lands in the box, ready to edit or send. Adjusted while
   // rendering (not in an effect) so the box never paints with the old draft first.
@@ -1144,6 +1147,19 @@ export function ChatOverlay({
     status === "working" ||
     status === "speaking" ||
     messages.some((m) => m.streaming);
+  const activeStage = status === "working" ? "Working" : status === "thinking" ? "Thinking" : null;
+  useEffect(() => {
+    if (!activeStage) {
+      progressStartedAt.current = null;
+      return undefined;
+    }
+    if (progressStartedAt.current === null) progressStartedAt.current = Date.now();
+    const updateElapsed = () =>
+      setElapsedSeconds(Math.floor((Date.now() - progressStartedAt.current) / 1000));
+    updateElapsed();
+    const timer = setInterval(updateElapsed, 1000);
+    return () => clearInterval(timer);
+  }, [activeStage]);
 
   const send = (text = draft) => {
     const t = text.trim();
@@ -1287,6 +1303,9 @@ export function ChatOverlay({
       footer={
         <div className="cv-foot-stack">
           {agentMode && <AgentRow active={activeAgent} pcPaired={pcPaired} onPick={onPickAgent} />}
+          <ChatSpeechTransport
+            message={[...messages].reverse().find((item) => item.role === "jarvis")?.text || ""}
+          />
           <div className="cv-compose">
             {onUpload && (
               <>
@@ -1378,14 +1397,19 @@ export function ChatOverlay({
             </div>
           </div>
         )}
-        {status === "thinking" && (
+        {activeStage && (
           <div className="cv-msg cv-msg--jarvis">
-            <span className="sp-sr">JARVIS is thinking</span>
+            <span className="sp-sr" role="status" aria-live="polite">
+              JARVIS is {activeStage.toLowerCase()} for {elapsedSeconds} seconds
+            </span>
             <div className="cv-typing" aria-hidden="true">
               <i />
               <i />
               <i />
             </div>
+            <span className="sp-desc">
+              {activeStage} · {elapsedSeconds}s
+            </span>
           </div>
         )}
       </div>

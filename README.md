@@ -13,7 +13,7 @@ the recorded live acceptance checks; the first fork build is a pre-release.
 
 **[Download for Android](https://github.com/maddog42000/jarvis/releases)**
 · [Get started](#get-started)
-· [What's new in v2.5.0](docs/releases/v2.5.0.md)
+· [What's new in v2.5.2-beta.2](docs/releases/v2.5.2-beta.2.md)
 · [Windows companion](https://github.com/AnaaySampat/jarvis-windows)
 
 <table align="center">

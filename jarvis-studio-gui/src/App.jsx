@@ -986,7 +986,6 @@ export default function App() {
         onPickAgent={pickAgent}
         onToggleAgents={toggleAgents}
       />
-
       {(browserState.open || controlState.armed || !isConnected) && !IS_MOBILE && (
         <div className="hud-top-stack" role="status">
           {controlState.armed && (

@@ -3,8 +3,9 @@
    one for the other. The rings are drawn on a canvas in a fixed 522-unit space and
    scaled by CSS; their speed follows the status. */
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { isMobileViewport } from "../utils/isMobileViewport";
+import { loadCenterpieceImage } from "../brain/mobile/screenConfig";
 
 const SIZE = 522;
 const MOODS = {
@@ -158,6 +159,17 @@ export function Waveform({ status = "idle", bars = 36 }) {
 }
 
 export default function Reactor({ status = "idle", label, onClick, rgb = [0, 229, 255] }) {
+  const [still, setStill] = useState("");
+  useEffect(() => {
+    const refresh = () => setStill(loadCenterpieceImage());
+    refresh();
+    window.addEventListener("jarvis-screen-config-change", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("jarvis-screen-config-change", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
   return (
     <button
       type="button"
@@ -169,8 +181,8 @@ export default function Reactor({ status = "idle", label, onClick, rgb = [0, 229
       <span className="reactor-glow" aria-hidden />
       <Rings status={status} rgb={rgb} layer="back" />
       <img
-        className="reactor-helmet"
-        src="/assets/ironman-helmet-kept.png"
+        className={still ? "reactor-user-still" : "reactor-helmet"}
+        src={still || "/assets/ironman-helmet-kept.png"}
         alt=""
         draggable={false}
       />

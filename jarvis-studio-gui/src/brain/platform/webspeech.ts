@@ -40,6 +40,21 @@ async function nativeSpeak(text: string): Promise<boolean> {
 // "speaking" status (and anything gated on it, like the phone-control STOP banner)
 // disappear early on longer replies whose real duration ran past the guess.
 let stopCurrent: (() => void) | null = null;
+let speechGeneration = 0;
+export type SpeechLifecycle = { type: "start" | "end" | "stop"; id: number; text: string };
+const speechListeners = new Set<(event: SpeechLifecycle) => void>();
+let activeSpeech: SpeechLifecycle | null = null;
+function notifySpeech(event: SpeechLifecycle): void {
+  if (event.type === "start") activeSpeech = event;
+  else if (activeSpeech?.id === event.id) activeSpeech = null;
+  speechListeners.forEach((listener) => listener(event));
+}
+/** Observe shared speech, including utterances started by automatic chat replies. */
+export function subscribeSpeechLifecycle(listener: (event: SpeechLifecycle) => void): () => void {
+  speechListeners.add(listener);
+  return () => speechListeners.delete(listener);
+}
+export function getActiveSpeech(): SpeechLifecycle | null { return activeSpeech; }
 /**
  * Ceiling for how long an utterance could possibly take.
  *
@@ -93,11 +108,19 @@ export const webSpeechTTS: TextToSpeech = {
     // it through unchanged makes Android literally say "asterisk asterisk".
     const clean = stripMarkdownForSpeech(text);
     if (!clean) return;
+    const generation = ++speechGeneration;
+    notifySpeech({ type: "start", id: generation, text: clean });
 
     // On-device: speak through native Android TextToSpeech (the WebView has no
     // speechSynthesis). Hold "speaking" for an estimated duration, interruptible.
     if (inTauri()) {
       const ok = await nativeSpeak(clean);
+      // stop() may have raced the initial plugin invocation. Do not let a late
+      // native start survive that stop; don't stop a newer caller's utterance.
+      if (generation !== speechGeneration) {
+        if (speechGeneration === generation + 1) invoke("plugin:phone|stop_speaking").catch(() => {});
+        return;
+      }
       if (ok) {
         await new Promise<void>((resolve) => {
           let settled = false;
@@ -107,7 +130,8 @@ export const webSpeechTTS: TextToSpeech = {
             settled = true;
             clearTimeout(safetyTimer);
             clearInterval(poller);
-            stopCurrent = null;
+            if (stopCurrent === finish) stopCurrent = null;
+            notifySpeech({ type: "end", id: generation, text: clean });
             resolve();
           };
           // Ceiling only — real completion (below) resolves first in the normal
@@ -132,7 +156,10 @@ export const webSpeechTTS: TextToSpeech = {
 
     // Browser-preview path: the Web Speech synthesis API (works in real browsers).
     const s = synth();
-    if (!s) return;
+    if (!s) {
+      notifySpeech({ type: "end", id: generation, text: clean });
+      return;
+    }
     await new Promise<void>((resolve) => {
       try {
         s.cancel(); // never overlap with a previous utterance
@@ -146,6 +173,7 @@ export const webSpeechTTS: TextToSpeech = {
           if (done) return;
           done = true;
           clearTimeout(timer);
+          notifySpeech({ type: "end", id: generation, text: clean });
           resolve();
         };
         u.onend = finish;
@@ -154,12 +182,15 @@ export const webSpeechTTS: TextToSpeech = {
         const timer = setTimeout(finish, Math.min(45000, 2500 + clean.length * 70));
         s.speak(u);
       } catch {
+        notifySpeech({ type: "end", id: generation, text: clean });
         resolve();
       }
     });
   },
 
   stop(): Promise<void> {
+    notifySpeech({ type: "stop", id: speechGeneration, text: "" });
+    speechGeneration += 1;
     if (inTauri()) invoke("plugin:phone|stop_speaking").catch(() => {});
     if (stopCurrent) stopCurrent(); // cut the native "speaking" wait short
     try {
