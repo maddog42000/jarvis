@@ -38,3 +38,18 @@ The next layer is a local, user-designated visual-template matcher. It stores a 
 This is deliberately **not automatic tapping**. A template match is only a candidate observation; the operator's existing action policy, stale-screen receipts, consent and independent verification still decide whether an action may happen. Blank/low-texture crops, wrong-app matches and weak scores fail closed.
 
 The current matcher is an engine foundation with JVM tests. A user-facing “learn this icon” crop/confirmation flow and private local template persistence still need to be added before it becomes available as an end-user feature.
+
+
+## Teach Jarvis an icon (Android)
+
+The mobile Customize sheet now includes **Teach Jarvis an icon**:
+
+1. Open the target app and capture a temporary screenshot preview.
+2. Drag a rectangle around one icon or control and give it a name.
+3. Save it. Native code checks that the app and accessibility screen generation still match the preview.
+4. The app stores only a small normalized grayscale feature vector, the label, and the app package in app-private SharedPreferences. It does not store the source screenshot.
+5. Use **Find saved icons** to search the current app. Results show candidate bounds and confidence; no tap is issued.
+
+The matcher is intentionally conservative and heuristic. It is sensitive to animation, theme changes, scaling, transparency, and similar-looking controls. The app-package guard prevents cross-app reuse. A match is not a verified control identity and must never bypass the operator's risk checks, stale-screen receipts, consent, or verification.
+
+Templates are currently device-local and capped. There is no cloud sync or automatic template collection.
