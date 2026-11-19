@@ -122,7 +122,7 @@ export default function VisualTemplateStudio() {
   };
 
   const save = async () => {
-    if (!preview || !crop || crop.w < 30 || crop.h < 30 || !label.trim()) {
+    if (!preview || !crop || crop.w < 12 || crop.h < 12 || !label.trim()) {
       setStatus("Select a larger icon area and give it a name first.");
       return;
     }
@@ -293,7 +293,7 @@ export default function VisualTemplateStudio() {
             {crop ? "Selection: x " + crop.x + ", y " + crop.y + ", " + crop.w + " × " + crop.h + " / 1000" : "No area selected yet."}
           </p>
           <div className="cz-preset-bar">
-            <button type="button" className="btn btn--primary" onClick={save} disabled={busy || !crop || crop.w < 30 || crop.h < 30 || !label.trim()}>
+            <button type="button" className="btn btn--primary" onClick={save} disabled={busy || !crop || crop.w < 12 || crop.h < 12 || !label.trim()}>
               Save icon locally
             </button>
             <button type="button" className="btn btn--ghost" onClick={async () => {
