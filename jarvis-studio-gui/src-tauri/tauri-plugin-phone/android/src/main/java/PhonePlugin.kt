@@ -1899,7 +1899,7 @@ class PhonePlugin(private val activity: Activity) : Plugin(activity) {
                 if (args.screenshotBase64.isNotBlank()) {
                     return fail("Screenshots are retained in native memory; send only the preview token.", "unexpected_image")
                 }
-                val preview = VisualTemplateCaptureSession.consume(args.previewToken)
+                val preview = VisualTemplateCaptureSession.peek(args.previewToken)
                     ?: return fail("The captured screenshot expired. Capture the game screen again.", "preview_expired")
                 autonomyScope.launch(Dispatchers.Default) {
                     val saved = VisualTemplateStore.save(
@@ -1913,6 +1913,7 @@ class PhonePlugin(private val activity: Activity) : Plugin(activity) {
                     if (saved == null) {
                         fail("That crop is too small, blank, or invalid. Select a larger icon area.", "invalid_template")
                     } else {
+                        VisualTemplateCaptureSession.discard(args.previewToken)
                         invoke.resolve(JSObject().apply {
                             put("ok", true)
                             put("summary", "Saved " + saved.label + " on this device.")
