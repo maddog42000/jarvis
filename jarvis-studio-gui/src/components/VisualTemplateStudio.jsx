@@ -31,6 +31,7 @@ export default function VisualTemplateStudio() {
   const [matches, setMatches] = useState([]);
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
+  const [armed, setArmed] = useState(false);
   const imageRef = useRef(null);
   const anchor = useRef(null);
 
@@ -94,6 +95,7 @@ export default function VisualTemplateStudio() {
     setStatus("Arming the floating capture control…");
     try {
       const result = await androidPlatform.visualTemplates.arm();
+      setArmed(Boolean(result?.ok));
       setStatus(result?.summary || "Could not arm screen capture. Check that JARVIS Accessibility is enabled.");
     } finally {
       setBusy(false);
@@ -110,6 +112,7 @@ export default function VisualTemplateStudio() {
         return;
       }
       setPreview(result);
+      setArmed(false);
       setCrop(null);
       setMatches([]);
       setStatus("Captured " + result.appPackage + ". Drag around one icon or control.");
@@ -188,6 +191,15 @@ export default function VisualTemplateStudio() {
         <button type="button" className="btn btn--ghost" onClick={loadCaptured} disabled={busy}>
           Load captured screen
         </button>
+        {armed && (
+          <button type="button" className="btn btn--ghost" onClick={async () => {
+            await androidPlatform.visualTemplates.discard("");
+            setArmed(false);
+            setStatus("Cancelled the floating capture control.");
+          }} disabled={busy}>
+            Cancel capture
+          </button>
+        )}
         <button type="button" className="btn btn--ghost" onClick={find} disabled={busy || !preview || templates.length === 0}>
           Find saved icons in preview
         </button>
