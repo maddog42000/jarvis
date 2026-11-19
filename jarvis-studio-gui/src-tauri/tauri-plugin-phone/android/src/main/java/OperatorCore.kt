@@ -1466,7 +1466,7 @@ internal fun stepPrompt(
     val shotLine = when (screenshot) {
         true -> "SCREENSHOT: attached — it shows this same screen. tap_point anything it shows that the list " +
             "lacks (x,y in THOUSANDTHS of the screenshot; tap_xy/drag are refused this step).\n"
-        false -> "SCREENSHOT: none this step — no image is attached to this request. Use the accessibility list and any local OCR " +
+        false -> "SCREENSHOT: none — no image is attached to this request. Use the accessibility list and any local OCR " +
             "coordinates below; ask for look only when a needed target is still missing.\n"
         null -> "SCREENSHOT: this model cannot accept image input. Use the accessibility list and any local OCR " +
             "coordinates below; they refer to the same screenshot in THOUSANDTHS (0..1000).\n"
