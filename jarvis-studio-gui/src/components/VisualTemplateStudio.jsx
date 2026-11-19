@@ -16,7 +16,7 @@ function cropBetween(a, b) {
 
 function newTemplateId() {
   const suffix = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
-  return \`icon-\${Date.now().toString(36)}-\${suffix}\`.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 80);
+  return ("icon-" + Date.now().toString(36) + "-" + suffix).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 80);
 }
 
 /**
@@ -90,7 +90,7 @@ export default function VisualTemplateStudio() {
       }
       setPreview(result);
       setCrop(null);
-      setStatus(\`Preview ready for \${result.appPackage}. Drag around one icon or control.\`);
+      setStatus("Preview ready for " + result.appPackage + ". Drag around one icon or control.");
     } finally {
       setBusy(false);
     }
@@ -152,7 +152,7 @@ export default function VisualTemplateStudio() {
   };
 
   const imageUrl = preview?.base64
-    ? preview.base64.startsWith("data:") ? preview.base64 : \`data:image/jpeg;base64,\${preview.base64}\`
+    ? preview.base64.startsWith("data:") ? preview.base64 : "data:image/jpeg;base64," + preview.base64
     : "";
 
   return (
@@ -212,10 +212,10 @@ export default function VisualTemplateStudio() {
                 style={{
                   position: "absolute",
                   pointerEvents: "none",
-                  left: \`\${crop.x / 10}%\`,
-                  top: \`\${crop.y / 10}%\`,
-                  width: \`\${crop.w / 10}%\`,
-                  height: \`\${crop.h / 10}%\`,
+                  left: (crop.x / 10) + "%",
+                  top: (crop.y / 10) + "%",
+                  width: (crop.w / 10) + "%",
+                  height: (crop.h / 10) + "%",
                   border: "2px solid var(--accent, #00e5ff)",
                   background: "rgba(0,229,255,.14)",
                   boxSizing: "border-box",
@@ -234,7 +234,7 @@ export default function VisualTemplateStudio() {
             />
           </label>
           <p className="cz-note">
-            {crop ? \`Selection: x \${crop.x}, y \${crop.y}, \${crop.w} × \${crop.h} / 1000\` : "No area selected yet."}
+            {crop ? "Selection: x " + crop.x + ", y " + crop.y + ", " + crop.w + " × " + crop.h + " / 1000" : "No area selected yet."}
           </p>
           <div className="cz-preset-bar">
             <button type="button" className="btn btn--primary" onClick={save} disabled={busy || !crop || crop.w < 30 || crop.h < 30 || !label.trim()}>
