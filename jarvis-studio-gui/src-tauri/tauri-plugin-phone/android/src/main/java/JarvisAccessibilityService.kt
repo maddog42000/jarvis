@@ -237,8 +237,8 @@ class JarvisAccessibilityService : AccessibilityService() {
      * switches to the target app, and taps this small accessibility overlay exactly
      * when the desired screen is visible. The screenshot is held in memory briefly.
      */
-    fun showVisualCaptureOverlay() {
-        if (visualCaptureView != null) return
+    fun showVisualCaptureOverlay(): Boolean {
+        if (visualCaptureView != null) return true
         try {
             val view = TextView(this).apply {
                 text = "CAPTURE"
@@ -298,8 +298,10 @@ class JarvisAccessibilityService : AccessibilityService() {
             }
             windowManager().addView(view, params)
             visualCaptureView = view
+            return true
         } catch (_: Exception) {
             visualCaptureView = null
+            return false
         }
     }
 
