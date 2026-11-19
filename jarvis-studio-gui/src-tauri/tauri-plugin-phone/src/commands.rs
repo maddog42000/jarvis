@@ -124,6 +124,7 @@ phone_command!(poll_stop_overlay() -> crate::models::StopOverlayStateResponse);
 phone_command!(request_overlay_permission() -> ActionResponse);
 phone_command!(get_device_stats() -> DeviceStatsResponse);
 phone_command!(capture_screenshot() -> crate::models::CaptureScreenshotResponse);
+phone_command!(visual_templates(action: String, id: String, label: String, app_package: String, generation: i64, screenshot_base64: String, preview_token: String, x: i32, y: i32, w: i32, h: i32) -> serde_json::Value, VisualTemplatesRequest);
 phone_command!(pick_folder() -> PickFolderResponse);
 phone_command!(list_directory(uri: String, path: String) -> ListDirectoryResponse, FileOpRequest);
 phone_command!(read_file(uri: String, path: String) -> ReadFileResponse, FileOpRequest);

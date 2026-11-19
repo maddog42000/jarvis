@@ -9,6 +9,7 @@ import { useState, useRef } from "react";
 import Sheet from "./Sheet";
 import Icon from "./Icon";
 import { Switch, ConfirmButton, AddField } from "./controls";
+import VisualTemplateStudio from "./VisualTemplateStudio";
 import { IS_MOBILE } from "../hooks/useAssistant";
 import { CENTERPIECE_IMAGE_MAX, DEFAULT_LOOK, moveInColumn, THEMES } from "../brain/mobile/screenConfig";
 
@@ -493,6 +494,8 @@ export default function Customize({ screen, onClose, onPatch }) {
             />
           </div>
         </section>
+        {IS_MOBILE && <VisualTemplateStudio />}
+
         <section className="cz-sec">
           <h3>Background</h3>
           <div className="cz-bgs" role="radiogroup" aria-label="Background">

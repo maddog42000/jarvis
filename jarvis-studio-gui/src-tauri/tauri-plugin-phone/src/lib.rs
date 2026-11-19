@@ -79,6 +79,7 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             commands::request_overlay_permission,
             commands::get_device_stats,
             commands::capture_screenshot,
+            commands::visual_templates,
             commands::pick_folder,
             commands::list_directory,
             commands::read_file,

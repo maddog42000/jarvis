@@ -81,6 +81,7 @@ object NativeOperator {
     private const val ACTION_TIMEOUT_MS = 15_000L
     private const val SCREENSHOT_TIMEOUT_MS = 5_000L
     private const val LOCAL_OCR_TIMEOUT_MS = 4_000L
+    private const val LOCAL_MATCH_TIMEOUT_MS = 3_000L
     private const val LAUNCH_SETTLE_MS = 4_000L
     private const val LAUNCH_QUIET_MS = 400L
     /** A live app (a running stopwatch) never goes quiet; the loop's own splash re-look
@@ -389,11 +390,16 @@ object NativeOperator {
             }
         }
 
-        override suspend fun recognizeScreenshotText(base64Jpeg: String): String? {
+        override suspend fun recognizeScreenshotText(
+            base64Jpeg: String,
+            expectedApp: String,
+            generation: Long,
+        ): String? {
             val s = svc() ?: return null
-            // Never run OCR over a screen with a password field or active text entry. This
-            // complements text-pattern redaction and avoids extracting typed credentials.
+            // Bind OCR to the same app and observation that caused the screenshot request.
             val snapshot = try { s.snapshot() } catch (_: Exception) { return null }
+            if (snapshot.app != expectedApp || snapshot.generation != generation) return null
+            // Never run OCR over a screen with a password field or active text entry.
             if (snapshot.nodes.any { it.password || (it.editable && it.focused) }) return null
             return withTimeoutOrNull(LOCAL_OCR_TIMEOUT_MS) {
                 try {
@@ -401,9 +407,30 @@ object NativeOperator {
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    Log.w(TAG, "local screen OCR unavailable: ${e.javaClass.simpleName}")
+                    Log.w(TAG, "local screen OCR unavailable: " + e.javaClass.simpleName)
                     null
                 }
+            }
+        }
+
+        override suspend fun findVisualTemplates(
+            base64Jpeg: String,
+            expectedApp: String,
+            generation: Long,
+        ): String? {
+            val s = svc() ?: return null
+            val snapshot = try { s.snapshot() } catch (_: Exception) { return null }
+            if (snapshot.app != expectedApp || snapshot.generation != generation) return null
+            if (snapshot.nodes.any { it.password || (it.editable && it.focused) }) return null
+            val matches = withTimeoutOrNull(LOCAL_MATCH_TIMEOUT_MS) {
+                VisualTemplateStore.find(context, base64Jpeg, snapshot.app)
+            } ?: return null
+            return matches.take(12).joinToString("\n") { found ->
+                val label = found.label.replace(Regex("[\r\n\"]"), " ").take(80)
+                "- user-taught icon candidate \"" + label + "\" at x=" + found.match.bounds.x +
+                    ", y=" + found.match.bounds.y + ", w=" + found.match.bounds.w +
+                    ", h=" + found.match.bounds.h + "; confidence=" +
+                    (found.match.confidence * 100).toInt() + "% (candidate only)"
             }
         }
 

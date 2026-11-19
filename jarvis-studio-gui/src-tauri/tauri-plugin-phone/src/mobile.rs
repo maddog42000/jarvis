@@ -83,6 +83,7 @@ impl<R: Runtime> Phone<R> {
     mobile_command!(request_overlay_permission() -> ActionResponse, "requestOverlayPermission");
     mobile_command!(get_device_stats() -> DeviceStatsResponse, "getDeviceStats");
     mobile_command!(capture_screenshot() -> crate::models::CaptureScreenshotResponse, "captureScreenshot");
+    mobile_command!(visual_templates(payload: VisualTemplatesRequest) -> serde_json::Value, "visualTemplates");
     mobile_command!(pick_folder() -> PickFolderResponse, "pickFolder");
     mobile_command!(list_directory(payload: FileOpRequest) -> ListDirectoryResponse, "listDirectory");
     mobile_command!(read_file(payload: FileOpRequest) -> ReadFileResponse, "readFile");

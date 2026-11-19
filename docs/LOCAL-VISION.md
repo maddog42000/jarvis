@@ -29,3 +29,29 @@ The upstream documentation estimates approximately 4 MB of APK size increase per
 3. On a physical device, test ordinary app screens, game HUD text, screen rotation, secure/password screens, and rapid screen changes.
 4. Compare operator task latency and model input size with OCR enabled versus disabled.
 5. Only after that, add app-specific visual templates and screen profiles.
+
+
+## Icon/template matching foundation
+
+The next layer is a local, user-designated visual-template matcher. It stores a compact normalized grayscale fingerprint for a crop, then searches later screenshots at nearby scales and returns the best approximate bounds plus a confidence score. Templates are scoped to the app package that they were learned in.
+
+This is deliberately **not automatic tapping**. A template match is only a candidate observation; the operator's existing action policy, stale-screen receipts, consent and independent verification still decide whether an action may happen. Blank/low-texture crops, wrong-app matches and weak scores fail closed.
+
+The Android Customize sheet now includes the user-facing crop/confirmation flow, private local template persistence, listing/deletion, and matching against a captured app screen. During an operator task, saved matches for that foreground app are also added to the next local vision observation when the existing screenshot path runs. The native matcher returns candidates only; it does not actuate.
+
+
+## Teach Jarvis an icon (Android)
+
+The mobile Customize sheet now includes **Teach Jarvis an icon**:
+
+1. In JARVIS Customize, arm the floating capture control.
+2. Switch to the target app (for example RuneScape Mobile) and tap the floating CAPTURE button when the desired screen is visible.
+3. Return to JARVIS and load the short-lived captured preview.
+4. Drag a rectangle around one icon or control and give it a name.
+3. Save it. Native code checks that the app and accessibility screen generation still match the preview.
+4. The app stores only a small normalized grayscale feature vector, the label, and the app package in app-private SharedPreferences. It does not store the source screenshot.
+5. Use **Find saved icons in preview** to search that captured screen. Results show candidate bounds and confidence; no tap is issued.
+
+The matcher is intentionally conservative and heuristic. It is sensitive to animation, theme changes, scaling, transparency, and similar-looking controls. The app-package guard prevents cross-app reuse. A match is not a verified control identity and must never bypass the operator's risk checks, stale-screen receipts, consent, or verification.
+
+Templates are currently device-local and capped. There is no cloud sync or automatic template collection.

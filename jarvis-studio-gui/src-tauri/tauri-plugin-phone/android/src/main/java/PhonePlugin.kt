@@ -471,6 +471,21 @@ class GestureStartArgs {
     var confidence: Float = 0.8f
 }
 
+@InvokeArg
+internal class VisualTemplatesArgs {
+    var action: String = ""
+    var id: String = ""
+    var label: String = ""
+    var appPackage: String = ""
+    var generation: Long = -1L
+    var screenshotBase64: String = ""
+    var previewToken: String = ""
+    var x: Int = 0
+    var y: Int = 0
+    var w: Int = 0
+    var h: Int = 0
+}
+
 @TauriPlugin
 class PhonePlugin(private val activity: Activity) : Plugin(activity) {
 
@@ -1830,6 +1845,138 @@ class PhonePlugin(private val activity: Activity) : Plugin(activity) {
             args.observationGeneration,
             args.expectedApp,
         ) { invoke.resolve(actionResult(it)) }
+    }
+
+    /**
+     * User-directed icon learning. Preview returns a transient screenshot; save stores only
+     * a compact grayscale fingerprint in app-private preferences. No screenshot is retained
+     * or sent to a model. A generation check prevents saving a crop after the screen changed.
+     */
+    @Command
+    fun visualTemplates(invoke: Invoke) {
+        val args = invoke.parseArgs(VisualTemplatesArgs::class.java)
+        fun fail(summary: String, code: String) {
+            invoke.resolve(JSObject().apply {
+                put("ok", false)
+                put("summary", summary)
+                put("code", code)
+            })
+        }
+        when (args.action) {
+            "arm" -> {
+                val svc = service() ?: return fail("Enable JARVIS Accessibility first.", "service_off")
+                if (svc.isDeviceLocked()) return fail("Unlock the phone before learning an icon.", "device_locked")
+                VisualTemplateCaptureSession.discard()
+                if (!svc.showVisualCaptureOverlay()) {
+                    return fail("Could not show the capture control over other apps.", "overlay_unavailable")
+                }
+                invoke.resolve(JSObject().apply {
+                    put("ok", true)
+                    put("summary", "Switch to the target app and tap the floating CAPTURE control when the icon is visible.")
+                })
+            }
+            "take_preview" -> {
+                val preview = VisualTemplateCaptureSession.peek(args.previewToken)
+                    ?: return fail("No recent game screenshot is waiting. Start a new capture.", "preview_expired")
+                invoke.resolve(JSObject().apply {
+                    put("ok", true)
+                    put("summary", "Loaded the captured app screen.")
+                    put("base64", preview.base64)
+                    put("appPackage", preview.appPackage)
+                    put("generation", preview.generation)
+                    put("previewToken", preview.token)
+                })
+            }
+            "discard" -> {
+                val discarded = VisualTemplateCaptureSession.discard(args.previewToken)
+                service()?.hideVisualCaptureOverlay()
+                invoke.resolve(JSObject().apply {
+                    put("ok", true)
+                    put("summary", if (discarded) "Discarded the temporary screenshot." else "No temporary screenshot was waiting.")
+                })
+            }
+            "save" -> {
+                if (args.previewToken.isBlank()) return fail("Load a captured game screenshot before saving.", "preview_expired")
+                if (args.screenshotBase64.isNotBlank()) {
+                    return fail("Screenshots are retained in native memory; send only the preview token.", "unexpected_image")
+                }
+                val preview = VisualTemplateCaptureSession.peek(args.previewToken)
+                    ?: return fail("The captured screenshot expired. Capture the game screen again.", "preview_expired")
+                autonomyScope.launch(Dispatchers.Default) {
+                    val saved = VisualTemplateStore.save(
+                        activity.applicationContext,
+                        preview.base64,
+                        VisionBox(args.x, args.y, args.w, args.h),
+                        args.id,
+                        args.label,
+                        preview.appPackage,
+                    )
+                    if (saved == null) {
+                        fail("That crop is too small, blank, or invalid. Select a larger icon area.", "invalid_template")
+                    } else {
+                        invoke.resolve(JSObject().apply {
+                            put("ok", true)
+                            put("summary", "Saved " + saved.label + " on this device.")
+                            put("id", saved.id)
+                            put("label", saved.label)
+                            put("appPackage", saved.appPackage)
+                            put("count", VisualTemplateStore.list(activity.applicationContext).size)
+                        })
+                    }
+                }
+            }
+            "list" -> {
+                val rows = JSONArray()
+                VisualTemplateStore.list(activity.applicationContext).forEach { row ->
+                    rows.put(JSONObject().put("id", row.id).put("label", row.label).put("appPackage", row.appPackage))
+                }
+                invoke.resolve(JSObject().apply {
+                    put("ok", true)
+                    put("templates", rows)
+                    put("summary", rows.length().toString() + " saved visual templates.")
+                })
+            }
+            "delete" -> {
+                val deleted = VisualTemplateStore.delete(activity.applicationContext, args.id)
+                invoke.resolve(JSObject().apply {
+                    put("ok", deleted)
+                    put("summary", if (deleted) "Deleted the saved icon template." else "That template was not found.")
+                    if (!deleted) put("code", "not_found")
+                })
+            }
+            "find" -> {
+                if (args.previewToken.isBlank()) return fail("Load a captured game screenshot before searching.", "preview_expired")
+                val preview = VisualTemplateCaptureSession.peek(args.previewToken)
+                    ?: return fail("Capture a game screen first, then load it here.", "preview_expired")
+                autonomyScope.launch(Dispatchers.Default) {
+                    val matches = VisualTemplateStore.find(
+                        activity.applicationContext, preview.base64, preview.appPackage,
+                    )
+                    val rows = JSONArray()
+                    matches.forEach { found ->
+                        rows.put(
+                            JSONObject()
+                                .put("id", found.id)
+                                .put("label", found.label)
+                                .put("appPackage", found.appPackage)
+                                .put("confidence", found.match.confidence.toDouble())
+                                .put("x", found.match.bounds.x)
+                                .put("y", found.match.bounds.y)
+                                .put("w", found.match.bounds.w)
+                                .put("h", found.match.bounds.h)
+                        )
+                    }
+                    invoke.resolve(JSObject().apply {
+                        put("ok", true)
+                        put("matches", rows)
+                        put("appPackage", preview.appPackage)
+                        put("generation", preview.generation)
+                        put("summary", if (rows.length() == 0) "No saved icons matched this captured screen." else "Found " + rows.length() + " possible icon matches.")
+                    })
+                }
+            }
+            else -> fail("Unknown visual-template action.", "invalid_action")
+        }
     }
 
     @Command

@@ -706,6 +706,34 @@ pub struct CaptureScreenshotResponse {
     pub summary: Option<String>,
 }
 
+/// User-directed icon-template actions. Screenshots are transient input only; the
+/// native side stores compact fingerprints, not the original image.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VisualTemplatesRequest {
+    pub action: String,
+    #[serde(default)]
+    pub id: String,
+    #[serde(default)]
+    pub label: String,
+    #[serde(default)]
+    pub app_package: String,
+    #[serde(default)]
+    pub generation: i64,
+    #[serde(default)]
+    pub screenshot_base64: String,
+    #[serde(default)]
+    pub preview_token: String,
+    #[serde(default)]
+    pub x: i32,
+    #[serde(default)]
+    pub y: i32,
+    #[serde(default)]
+    pub w: i32,
+    #[serde(default)]
+    pub h: i32,
+}
+
 // ── Read-only file access (Storage Access Framework) ──
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

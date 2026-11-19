@@ -41,6 +41,7 @@ const COMMANDS: &[&str] = &[
     "request_overlay_permission",
     "get_device_stats",
     "capture_screenshot",
+    "visual_templates",
     "pick_folder",
     "list_directory",
     "read_file",
