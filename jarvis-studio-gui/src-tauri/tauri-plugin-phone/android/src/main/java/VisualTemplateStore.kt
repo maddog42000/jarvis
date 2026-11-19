@@ -140,3 +140,56 @@ internal object VisualTemplateStore {
             .edit().putString(KEY, array.toString()).apply()
     }
 }
+
+
+/** One short-lived screenshot held only in memory while the user returns to the learning panel. */
+internal object VisualTemplateCaptureSession {
+    data class Preview(
+        val token: String,
+        val base64: String,
+        val appPackage: String,
+        val generation: Long,
+        val expiresAtMs: Long,
+    )
+
+    @Volatile private var current: Preview? = null
+
+    @Synchronized
+    fun store(base64: String, appPackage: String, generation: Long): Preview {
+        val preview = Preview(
+            token = java.util.UUID.randomUUID().toString().replace("-", ""),
+            base64 = base64,
+            appPackage = appPackage,
+            generation = generation,
+            expiresAtMs = android.os.SystemClock.elapsedRealtime() + 120_000L,
+        )
+        current = preview
+        return preview
+    }
+
+    @Synchronized
+    fun peek(token: String = ""): Preview? {
+        val value = current ?: return null
+        if (android.os.SystemClock.elapsedRealtime() > value.expiresAtMs) {
+            current = null
+            return null
+        }
+        if (token.isNotBlank() && token != value.token) return null
+        return value
+    }
+
+    @Synchronized
+    fun consume(token: String): Preview? {
+        val value = peek(token) ?: return null
+        current = null
+        return value
+    }
+
+    @Synchronized
+    fun discard(token: String = ""): Boolean {
+        val value = peek(token) ?: return false
+        if (token.isNotBlank() && token != value.token) return false
+        current = null
+        return true
+    }
+}
