@@ -257,6 +257,27 @@ export default function VisualTemplateStudio() {
                 }}
               />
             )}
+            {matches.map((match) => (
+              <div
+                key={match.id}
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  pointerEvents: "none",
+                  left: (match.x / 10) + "%",
+                  top: (match.y / 10) + "%",
+                  width: (match.w / 10) + "%",
+                  height: (match.h / 10) + "%",
+                  border: "2px dashed #ffbf47",
+                  background: "rgba(255,191,71,.10)",
+                  boxSizing: "border-box",
+                }}
+              >
+                <span style={{ position: "absolute", left: 0, top: 0, background: "#171717", color: "#ffcf70", fontSize: 10, padding: "2px 4px", whiteSpace: "nowrap" }}>
+                  {match.label} {Math.round(match.confidence * 100)}%
+                </span>
+              </div>
+            ))}
           </div>
           <label style={{ display: "grid", gap: 6, marginTop: 10 }}>
             <span className="cz-note">Icon name</span>
