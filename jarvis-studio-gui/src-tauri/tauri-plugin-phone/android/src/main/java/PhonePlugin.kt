@@ -1914,7 +1914,6 @@ class PhonePlugin(private val activity: Activity) : Plugin(activity) {
                     if (saved == null) {
                         fail("That crop is too small, blank, or invalid. Select a larger icon area.", "invalid_template")
                     } else {
-                        VisualTemplateCaptureSession.discard(args.previewToken)
                         invoke.resolve(JSObject().apply {
                             put("ok", true)
                             put("summary", "Saved " + saved.label + " on this device.")
