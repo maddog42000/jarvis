@@ -41,6 +41,7 @@ permissions = [
     "allow-request-overlay-permission",
     "allow-get-device-stats",
     "allow-capture-screenshot",
+    "allow-visual-templates",
     "allow-pick-folder",
     "allow-list-directory",
     "allow-read-file",
