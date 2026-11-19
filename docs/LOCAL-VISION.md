@@ -44,11 +44,13 @@ The Android Customize sheet now includes the user-facing crop/confirmation flow,
 
 The mobile Customize sheet now includes **Teach Jarvis an icon**:
 
-1. Open the target app and capture a temporary screenshot preview.
-2. Drag a rectangle around one icon or control and give it a name.
+1. In JARVIS Customize, arm the floating capture control.
+2. Switch to the target app (for example RuneScape Mobile) and tap the floating CAPTURE button when the desired screen is visible.
+3. Return to JARVIS and load the short-lived captured preview.
+4. Drag a rectangle around one icon or control and give it a name.
 3. Save it. Native code checks that the app and accessibility screen generation still match the preview.
 4. The app stores only a small normalized grayscale feature vector, the label, and the app package in app-private SharedPreferences. It does not store the source screenshot.
-5. Use **Find saved icons** to search the current app. Results show candidate bounds and confidence; no tap is issued.
+5. Use **Find saved icons in preview** to search that captured screen. Results show candidate bounds and confidence; no tap is issued.
 
 The matcher is intentionally conservative and heuristic. It is sensitive to animation, theme changes, scaling, transparency, and similar-looking controls. The app-package guard prevents cross-app reuse. A match is not a verified control identity and must never bypass the operator's risk checks, stale-screen receipts, consent, or verification.
 
