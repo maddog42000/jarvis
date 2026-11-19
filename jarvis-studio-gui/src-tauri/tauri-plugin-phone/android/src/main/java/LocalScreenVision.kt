@@ -240,57 +240,58 @@ internal object VisualTemplateMatcher {
             if (xs.lastOrNull() != lastX) xs += lastX
             if (ys.lastOrNull() != lastY) ys += lastY
 
+            // Keep a separate coarse winner for each scale. Refining only the global
+            // coarse winner can let a slightly better off-scale approximation suppress
+            // the exact-size candidate before pixel-level refinement ever sees it.
+            var scaleBestScore = -1f
+            var scaleBestLeft = -1
+            var scaleBestTop = -1
             for (top in ys) for (left in xs) {
                 val candidate = featureVector(pixels, imageWidth, left, top, patchW, patchH, template.gridSize)
                     ?: continue
                 val score = similarity(template.features, candidate)
-                if (score > bestScore) {
-                    bestScore = score
-                    bestLeft = left
-                    bestTop = top
-                    bestWidth = patchW
-                    bestHeight = patchH
-                    bestStep = step
-                    best = VisualMatch(
-                        bounds = VisionBox(
-                            x = (left * 1000f / imageWidth).toInt(),
-                            y = (top * 1000f / imageHeight).toInt(),
-                            w = (patchW * 1000f / imageWidth).toInt(),
-                            h = (patchH * 1000f / imageHeight).toInt(),
-                        ),
-                        confidence = score,
-                    )
+                if (score > scaleBestScore) {
+                    scaleBestScore = score
+                    scaleBestLeft = left
+                    scaleBestTop = top
                 }
             }
-        }
 
-        // Refine the best coarse candidate at pixel resolution. This removes stride
-        // quantization so a small icon is not missed just because its top-left edge
-        // fell between coarse scan positions.
-        if (bestLeft >= 0) {
-            val fromX = (bestLeft - bestStep).coerceAtLeast(0)
-            val toX = (bestLeft + bestStep).coerceAtMost(imageWidth - bestWidth)
-            val fromY = (bestTop - bestStep).coerceAtLeast(0)
-            val toY = (bestTop + bestStep).coerceAtMost(imageHeight - bestHeight)
-            for (top in fromY..toY) for (left in fromX..toX) {
-                val candidate = featureVector(
-                    pixels, imageWidth, left, top, bestWidth, bestHeight, template.gridSize,
-                ) ?: continue
-                val score = similarity(template.features, candidate)
-                if (score > bestScore) {
-                    bestScore = score
-                    bestLeft = left
-                    bestTop = top
-                    best = VisualMatch(
-                        bounds = VisionBox(
-                            (left * 1000f / imageWidth).toInt(),
-                            (top * 1000f / imageHeight).toInt(),
-                            (bestWidth * 1000f / imageWidth).toInt(),
-                            (bestHeight * 1000f / imageHeight).toInt(),
-                        ),
-                        confidence = score,
-                    )
+            // Refine this scale's best coarse candidate at pixel resolution before
+            // comparing it with the winners from other scales.
+            if (scaleBestLeft >= 0) {
+                val fromX = (scaleBestLeft - step).coerceAtLeast(0)
+                val toX = (scaleBestLeft + step).coerceAtMost(lastX)
+                val fromY = (scaleBestTop - step).coerceAtLeast(0)
+                val toY = (scaleBestTop + step).coerceAtMost(lastY)
+                for (top in fromY..toY) for (left in fromX..toX) {
+                    val candidate = featureVector(
+                        pixels, imageWidth, left, top, patchW, patchH, template.gridSize,
+                    ) ?: continue
+                    val score = similarity(template.features, candidate)
+                    if (score > scaleBestScore) {
+                        scaleBestScore = score
+                        scaleBestLeft = left
+                        scaleBestTop = top
+                    }
                 }
+            }
+
+            if (scaleBestScore > bestScore && scaleBestLeft >= 0) {
+                bestScore = scaleBestScore
+                bestLeft = scaleBestLeft
+                bestTop = scaleBestTop
+                bestWidth = patchW
+                bestHeight = patchH
+                best = VisualMatch(
+                    bounds = VisionBox(
+                        x = (bestLeft * 1000f / imageWidth).toInt(),
+                        y = (bestTop * 1000f / imageHeight).toInt(),
+                        w = (bestWidth * 1000f / imageWidth).toInt(),
+                        h = (bestHeight * 1000f / imageHeight).toInt(),
+                    ),
+                    confidence = bestScore,
+                )
             }
         }
         return best?.takeIf { it.confidence >= threshold }
