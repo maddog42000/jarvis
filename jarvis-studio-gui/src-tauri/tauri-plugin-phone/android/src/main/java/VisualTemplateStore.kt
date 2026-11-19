@@ -161,7 +161,7 @@ internal object VisualTemplateCaptureSession {
             base64 = base64,
             appPackage = appPackage,
             generation = generation,
-            expiresAtMs = android.os.SystemClock.elapsedRealtime() + 120_000L,
+            expiresAtMs = android.os.SystemClock.elapsedRealtime() + 300_000L,
         )
         current = preview
         return preview
