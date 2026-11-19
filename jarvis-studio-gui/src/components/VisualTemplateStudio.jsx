@@ -149,7 +149,7 @@ export default function VisualTemplateStudio() {
 
   const find = async () => {
     setBusy(true);
-    setStatus("Looking for saved icons in the current app…");
+    setStatus("Looking for saved icons in the captured game screen…");
     try {
       const result = await androidPlatform.visualTemplates.find(preview.previewToken);
       if (!result?.ok) {
