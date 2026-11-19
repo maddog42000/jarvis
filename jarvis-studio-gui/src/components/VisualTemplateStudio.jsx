@@ -41,8 +41,16 @@ export default function VisualTemplateStudio() {
   }, []);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    let active = true;
+    androidPlatform.visualTemplates.list().then((result) => {
+      if (!active) return;
+      if (result?.ok) setTemplates(result.templates || []);
+      else setStatus(result?.summary || "Could not load saved icon templates.");
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const pointAt = (event) => {
     const image = imageRef.current;
