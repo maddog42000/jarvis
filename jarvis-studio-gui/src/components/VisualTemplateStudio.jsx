@@ -137,9 +137,9 @@ export default function VisualTemplateStudio() {
       });
       setStatus(result?.summary || "The icon could not be saved.");
       if (result?.ok) {
-        setPreview(null);
         setCrop(null);
         setLabel("");
+        setMatches([]);
         await refresh();
       }
     } finally {
