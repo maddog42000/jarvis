@@ -37,7 +37,7 @@ The next layer is a local, user-designated visual-template matcher. It stores a 
 
 This is deliberately **not automatic tapping**. A template match is only a candidate observation; the operator's existing action policy, stale-screen receipts, consent and independent verification still decide whether an action may happen. Blank/low-texture crops, wrong-app matches and weak scores fail closed.
 
-The Android Customize sheet now includes the user-facing crop/confirmation flow, private local template persistence, listing/deletion, and current-app matching. The native command returns candidates only; it does not actuate.
+The Android Customize sheet now includes the user-facing crop/confirmation flow, private local template persistence, listing/deletion, and matching against a captured app screen. During an operator task, saved matches for that foreground app are also added to the next local vision observation when the existing screenshot path runs. The native matcher returns candidates only; it does not actuate.
 
 
 ## Teach Jarvis an icon (Android)
