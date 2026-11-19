@@ -214,6 +214,11 @@ internal object VisualTemplateMatcher {
         val requestedStep = stride.coerceIn(2, 32)
         var bestScore = -1f
         var best: VisualMatch? = null
+        var bestLeft = -1
+        var bestTop = -1
+        var bestWidth = 0
+        var bestHeight = 0
+        var bestStep = 1
 
         for (scale in scales) {
             val patchW = (imageWidth * template.widthPermille / 1000f * scale).toInt()
@@ -241,12 +246,47 @@ internal object VisualTemplateMatcher {
                 val score = similarity(template.features, candidate)
                 if (score > bestScore) {
                     bestScore = score
+                    bestLeft = left
+                    bestTop = top
+                    bestWidth = patchW
+                    bestHeight = patchH
+                    bestStep = step
                     best = VisualMatch(
                         bounds = VisionBox(
                             x = (left * 1000f / imageWidth).toInt(),
                             y = (top * 1000f / imageHeight).toInt(),
                             w = (patchW * 1000f / imageWidth).toInt(),
                             h = (patchH * 1000f / imageHeight).toInt(),
+                        ),
+                        confidence = score,
+                    )
+                }
+            }
+        }
+
+        // Refine the best coarse candidate at pixel resolution. This removes stride
+        // quantization so a small icon is not missed just because its top-left edge
+        // fell between coarse scan positions.
+        if (bestLeft >= 0) {
+            val fromX = (bestLeft - bestStep).coerceAtLeast(0)
+            val toX = (bestLeft + bestStep).coerceAtMost(imageWidth - bestWidth)
+            val fromY = (bestTop - bestStep).coerceAtLeast(0)
+            val toY = (bestTop + bestStep).coerceAtMost(imageHeight - bestHeight)
+            for (top in fromY..toY) for (left in fromX..toX) {
+                val candidate = featureVector(
+                    pixels, imageWidth, left, top, bestWidth, bestHeight, template.gridSize,
+                ) ?: continue
+                val score = similarity(template.features, candidate)
+                if (score > bestScore) {
+                    bestScore = score
+                    bestLeft = left
+                    bestTop = top
+                    best = VisualMatch(
+                        bounds = VisionBox(
+                            (left * 1000f / imageWidth).toInt(),
+                            (top * 1000f / imageHeight).toInt(),
+                            (bestWidth * 1000f / imageWidth).toInt(),
+                            (bestHeight * 1000f / imageHeight).toInt(),
                         ),
                         confidence = score,
                     )
