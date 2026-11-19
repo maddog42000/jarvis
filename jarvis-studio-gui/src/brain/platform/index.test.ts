@@ -117,3 +117,50 @@ describe("notifications as the model reads them", () => {
     expect(formatNotifications([])).toBe("No notifications are showing.");
   });
 });
+
+
+describe("visual template bridge", () => {
+  beforeEach(() => {
+    invokeMock.mockReset();
+    invokeMock.mockResolvedValue({ ok: true, summary: "ok", templates: [], matches: [] });
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: { __TAURI_INTERNALS__: {} },
+    });
+  });
+
+  afterEach(() => {
+    Reflect.deleteProperty(globalThis, "window");
+  });
+
+  it("sends every native argument for preview, save, list, delete and find", async () => {
+    const p = androidPlatform.visualTemplates;
+    await p.preview();
+    await p.save({
+      id: "template-1",
+      label: "Inventory slot",
+      appPackage: "com.example.game",
+      generation: 7,
+      screenshotBase64: "AA==",
+      x: 100,
+      y: 200,
+      w: 100,
+      h: 100,
+    });
+    await p.list();
+    await p.delete("template-1");
+    await p.find();
+
+    const required = requiredKeys();
+    const missing: string[] = [];
+    for (const [cmd, args] of invokeMock.mock.calls as [string, Record<string, unknown>?][]) {
+      const name = cmd.replace("plugin:phone|", "");
+      expect(name).toBe("visual_templates");
+      for (const key of required.get(name) ?? []) {
+        if (!(key in (args ?? {}))) missing.push(`${name}.${key}`);
+      }
+    }
+    expect(missing).toEqual([]);
+    expect(invokeMock).toHaveBeenCalledTimes(5);
+  });
+});
