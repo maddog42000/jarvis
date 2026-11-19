@@ -211,7 +211,7 @@ internal object VisualTemplateMatcher {
         if (imageWidth <= 0 || imageHeight <= 0 || pixels.size != imageWidth * imageHeight) return null
         if (template.gridSize !in 8..24 || template.features.size != template.gridSize * template.gridSize) return null
         if (!threshold.isFinite() || threshold !in 0.5f..1.0f) return null
-        val step = stride.coerceIn(2, 32)
+        val requestedStep = stride.coerceIn(2, 32)
         var bestScore = -1f
         var best: VisualMatch? = null
 
@@ -221,49 +221,36 @@ internal object VisualTemplateMatcher {
             if (patchW < 8 || patchH < 8 || patchW > imageWidth || patchH > imageHeight) continue
             val lastX = imageWidth - patchW
             val lastY = imageHeight - patchH
+            // Bound work on high-resolution screens: at most about 20k candidate positions
+            // per scale, while retaining the caller's requested minimum stride.
+            val searchArea = (lastX + 1).toLong() * (lastY + 1).toLong()
+            val adaptiveStep = kotlin.math.ceil(kotlin.math.sqrt(searchArea / 20_000.0)).toInt()
+            val step = maxOf(requestedStep, adaptiveStep, 2)
+            val xs = mutableListOf<Int>()
+            val ys = mutableListOf<Int>()
+            var x = 0
+            while (x <= lastX) { xs += x; x += step }
             var y = 0
-            while (y <= lastY) {
-                var x = 0
-                while (x <= lastX) {
-                    val candidate = featureVector(pixels, imageWidth, x, y, patchW, patchH, template.gridSize)
-                    if (candidate != null) {
-                        val score = similarity(template.features, candidate)
-                        if (score > bestScore) {
-                            bestScore = score
-                            best = VisualMatch(
-                                bounds = VisionBox(
-                                    x = (x * 1000f / imageWidth).toInt(),
-                                    y = (y * 1000f / imageHeight).toInt(),
-                                    w = (patchW * 1000f / imageWidth).toInt(),
-                                    h = (patchH * 1000f / imageHeight).toInt(),
-                                ),
-                                confidence = score,
-                            )
-                        }
-                    }
-                    x += step
+            while (y <= lastY) { ys += y; y += step }
+            if (xs.lastOrNull() != lastX) xs += lastX
+            if (ys.lastOrNull() != lastY) ys += lastY
+
+            for (top in ys) for (left in xs) {
+                val candidate = featureVector(pixels, imageWidth, left, top, patchW, patchH, template.gridSize)
+                    ?: continue
+                val score = similarity(template.features, candidate)
+                if (score > bestScore) {
+                    bestScore = score
+                    best = VisualMatch(
+                        bounds = VisionBox(
+                            x = (left * 1000f / imageWidth).toInt(),
+                            y = (top * 1000f / imageHeight).toInt(),
+                            w = (patchW * 1000f / imageWidth).toInt(),
+                            h = (patchH * 1000f / imageHeight).toInt(),
+                        ),
+                        confidence = score,
+                    )
                 }
-                // Always inspect the right edge so small remainders don't hide a true match.
-                if (lastX % step != 0) {
-                    val x = lastX
-                    val candidate = featureVector(pixels, imageWidth, x, y, patchW, patchH, template.gridSize)
-                    if (candidate != null) {
-                        val score = similarity(template.features, candidate)
-                        if (score > bestScore) {
-                            bestScore = score
-                            best = VisualMatch(
-                                VisionBox(
-                                    (x * 1000f / imageWidth).toInt(),
-                                    (y * 1000f / imageHeight).toInt(),
-                                    (patchW * 1000f / imageWidth).toInt(),
-                                    (patchH * 1000f / imageHeight).toInt(),
-                                ),
-                                score,
-                            )
-                        }
-                    }
-                }
-                y += step
             }
         }
         return best?.takeIf { it.confidence >= threshold }
