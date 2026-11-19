@@ -487,7 +487,7 @@ class OperatorLoop(
                     } catch (_: Exception) {
                         ""
                     }
-                    localVisionText = listOf(localOcr, savedIcons).filter { it.isNotBlank() }.joinToString("\\n")
+                    localVisionText = listOf(localOcr, savedIcons).filter { it.isNotBlank() }.joinToString("\n")
                     if (model.wantsImages) images = listOf(shot)
                     appsSeen += cur.app
                     emit(if (localVisionText.isNotBlank()) "captured screen and read visible text locally"
