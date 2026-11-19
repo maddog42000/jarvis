@@ -133,15 +133,14 @@ describe("visual template bridge", () => {
     Reflect.deleteProperty(globalThis, "window");
   });
 
-  it("sends every native argument for preview, save, list, delete and find", async () => {
+  it("sends every native argument for cross-app capture and icon template actions", async () => {
     const p = androidPlatform.visualTemplates;
+    await p.arm();
     await p.preview();
     await p.save({
       id: "template-1",
       label: "Inventory slot",
-      appPackage: "com.example.game",
-      generation: 7,
-      screenshotBase64: "AA==",
+      previewToken: "preview-token",
       x: 100,
       y: 200,
       w: 100,
@@ -149,7 +148,8 @@ describe("visual template bridge", () => {
     });
     await p.list();
     await p.delete("template-1");
-    await p.find();
+    await p.discard("preview-token");
+    await p.find("preview-token");
 
     const required = requiredKeys();
     const missing: string[] = [];
@@ -161,6 +161,6 @@ describe("visual template bridge", () => {
       }
     }
     expect(missing).toEqual([]);
-    expect(invokeMock).toHaveBeenCalledTimes(5);
+    expect(invokeMock).toHaveBeenCalledTimes(7);
   });
 });
