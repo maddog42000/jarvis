@@ -31,16 +31,16 @@ class VisualTemplateMatcherTest {
         )
         assertNotNull(template)
 
-        val later = canvas(200, 160)
+        val later = canvas(200, 200)
         // Same icon at twice the pixel size, at a different screen position.
         drawPlus(later, 200, 120, 70, 40, 0xffeeeeee.toInt())
         val match = VisualTemplateMatcher.find(
-            later, 200, 160, template!!, "com.example.game", threshold = 0.96f, stride = 2,
+            later, 200, 200, template!!, "com.example.game", threshold = 0.96f, stride = 2,
         )
         assertNotNull(match)
         assertTrue(match!!.confidence >= 0.96f)
         assertTrue(match.bounds.x in 590..620)
-        assertTrue(match.bounds.y in 420..455)
+        assertTrue(match.bounds.y in 340..360)
     }
 
     @Test
