@@ -27,6 +27,8 @@ android {
 }
 
 dependencies {
+    // Bundled Latin OCR: available immediately and runs on-device without a model download/API.
+    implementation("com.google.mlkit:text-recognition:16.0.1")
     // Explicit gesture-camera sessions; versions are pinned for reproducible APKs.
     implementation("androidx.camera:camera-camera2:1.4.2")
     implementation("androidx.camera:camera-lifecycle:1.4.2")

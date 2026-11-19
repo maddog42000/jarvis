@@ -14,6 +14,7 @@ import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.coroutines.resume
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -79,6 +80,7 @@ object NativeOperator {
     private const val RESULT_NOTIFICATION_ID = 42022
     private const val ACTION_TIMEOUT_MS = 15_000L
     private const val SCREENSHOT_TIMEOUT_MS = 5_000L
+    private const val LOCAL_OCR_TIMEOUT_MS = 4_000L
     private const val LAUNCH_SETTLE_MS = 4_000L
     private const val LAUNCH_QUIET_MS = 400L
     /** A live app (a running stopwatch) never goes quiet; the loop's own splash re-look
@@ -383,6 +385,24 @@ object NativeOperator {
             return withTimeoutOrNull(SCREENSHOT_TIMEOUT_MS) {
                 suspendCancellableCoroutine { cont ->
                     s.captureScreenshotBase64 { b64 -> if (cont.isActive) cont.resume(b64) }
+                }
+            }
+        }
+
+        override suspend fun recognizeScreenshotText(base64Jpeg: String): String? {
+            val s = svc() ?: return null
+            // Never run OCR over a screen with a password field or active text entry. This
+            // complements text-pattern redaction and avoids extracting typed credentials.
+            val snapshot = try { s.snapshot() } catch (_: Exception) { return null }
+            if (snapshot.nodes.any { it.password || (it.editable && it.focused) }) return null
+            return withTimeoutOrNull(LOCAL_OCR_TIMEOUT_MS) {
+                try {
+                    LocalScreenVision.recognize(base64Jpeg)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.w(TAG, "local screen OCR unavailable: ${e.javaClass.simpleName}")
+                    null
                 }
             }
         }
