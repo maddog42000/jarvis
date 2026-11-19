@@ -143,7 +143,68 @@ export interface DirectControl {
   readNotifications(app: string, from: string): Promise<ToolResult>;
 }
 
+export interface VisualTemplateSummary {
+  id: string;
+  label: string;
+  appPackage: string;
+}
+
+export interface VisualTemplatePreview {
+  ok: boolean;
+  summary: string;
+  base64?: string;
+  appPackage?: string;
+  generation?: number;
+  code?: string;
+}
+
+export interface VisualTemplateMatch {
+  id: string;
+  label: string;
+  appPackage: string;
+  confidence: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface VisualTemplateResult {
+  ok: boolean;
+  summary: string;
+  code?: string;
+  id?: string;
+  label?: string;
+  appPackage?: string;
+  count?: number;
+  templates?: VisualTemplateSummary[];
+  matches?: VisualTemplateMatch[];
+  generation?: number;
+}
+
+export interface VisualTemplatesControl {
+  /** Captures a temporary preview bound to the foreground app and screen generation. */
+  preview(): Promise<VisualTemplatePreview | null>;
+  /** Saves only a compact feature fingerprint from the selected preview crop. */
+  save(input: {
+    id: string;
+    label: string;
+    appPackage: string;
+    generation: number;
+    screenshotBase64: string;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  }): Promise<VisualTemplateResult | null>;
+  list(): Promise<VisualTemplateResult | null>;
+  delete(id: string): Promise<VisualTemplateResult | null>;
+  /** Finds candidates only; this never performs a tap. */
+  find(): Promise<VisualTemplateResult | null>;
+}
+
 export interface Platform {
+  visualTemplates: VisualTemplatesControl;
   apps: AppControl;
   system: SystemControl;
   files: FileAccess;
@@ -553,6 +614,27 @@ export function requestCalendarPermission(): Promise<ToolResult> {
 }
 
 export const androidPlatform: Platform = {
+  visualTemplates: {
+    preview: () => phoneJson<VisualTemplatePreview>("visual_templates", {
+      action: "preview", id: "", label: "", appPackage: "", generation: -1,
+      screenshotBase64: "", x: 0, y: 0, w: 0, h: 0,
+    }),
+    save: (input) => phoneJson<VisualTemplateResult>("visual_templates", {
+      action: "save", ...input,
+    }),
+    list: () => phoneJson<VisualTemplateResult>("visual_templates", {
+      action: "list", id: "", label: "", appPackage: "", generation: -1,
+      screenshotBase64: "", x: 0, y: 0, w: 0, h: 0,
+    }),
+    delete: (id) => phoneJson<VisualTemplateResult>("visual_templates", {
+      action: "delete", id, label: "", appPackage: "", generation: -1,
+      screenshotBase64: "", x: 0, y: 0, w: 0, h: 0,
+    }),
+    find: () => phoneJson<VisualTemplateResult>("visual_templates", {
+      action: "find", id: "", label: "", appPackage: "", generation: -1,
+      screenshotBase64: "", x: 0, y: 0, w: 0, h: 0,
+    }),
+  },
   apps: {
     open: (name) => phoneInvoke("open_app", { name }),
     close: (name) => phoneInvoke("close_app", { name }),
