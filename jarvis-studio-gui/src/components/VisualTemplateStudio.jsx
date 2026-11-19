@@ -182,7 +182,7 @@ export default function VisualTemplateStudio() {
     <section className="cz-sec" aria-labelledby="cz-visual-templates-title">
       <h3 id="cz-visual-templates-title">Teach Jarvis an icon</h3>
       <p className="cz-note">
-        Arm capture here, switch to RuneScape, and tap the small floating CAPTURE button. Return to JARVIS and load that screenshot. Drag around an icon and name it. Only a compact visual fingerprint is saved on this phone; the screenshot is temporary.
+        Arm capture here, switch to RuneScape, and tap the small floating CAPTURE button. Return to JARVIS and load that screenshot. Drag around an icon and name it. The screenshot is temporary; only a compact visual fingerprint is saved on this phone.
       </p>
       <div className="cz-preset-bar">
         <button type="button" className="btn btn--ghost" onClick={capture} disabled={busy}>
