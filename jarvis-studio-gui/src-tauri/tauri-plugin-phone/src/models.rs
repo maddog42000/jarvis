@@ -723,6 +723,8 @@ pub struct VisualTemplatesRequest {
     #[serde(default)]
     pub screenshot_base64: String,
     #[serde(default)]
+    pub preview_token: String,
+    #[serde(default)]
     pub x: i32,
     #[serde(default)]
     pub y: i32,
