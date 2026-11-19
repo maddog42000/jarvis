@@ -119,6 +119,7 @@ class JarvisAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
     @Volatile private var lastEventAtMs = SystemClock.elapsedRealtime()
     private var stopOverlayView: TextView? = null
+    private var visualCaptureView: TextView? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -129,6 +130,7 @@ class JarvisAccessibilityService : AccessibilityService() {
     override fun onUnbind(intent: Intent?): Boolean {
         cancelAllActions()
         hideStopOverlay()
+        hideVisualCaptureOverlay()
         instance = null
         return super.onUnbind(intent)
     }
@@ -136,6 +138,7 @@ class JarvisAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         cancelAllActions()
         hideStopOverlay()
+        hideVisualCaptureOverlay()
         instance = null
         super.onDestroy()
     }
@@ -226,6 +229,83 @@ class JarvisAccessibilityService : AccessibilityService() {
     fun hideStopOverlay() {
         val view = stopOverlayView ?: return
         stopOverlayView = null
+        try { windowManager().removeView(view) } catch (_: Exception) {}
+    }
+
+    /**
+     * A one-shot, user-controlled capture affordance. The user arms it in JARVIS,
+     * switches to the target app, and taps this small accessibility overlay exactly
+     * when the desired screen is visible. The screenshot is held in memory briefly.
+     */
+    fun showVisualCaptureOverlay() {
+        if (visualCaptureView != null) return
+        try {
+            val view = TextView(this).apply {
+                text = "CAPTURE"
+                setTextColor(Color.WHITE)
+                textSize = 11f
+                gravity = Gravity.CENTER
+                background = GradientDrawable().apply {
+                    cornerRadius = dp(12).toFloat()
+                    setColor(Color.parseColor("#087F8C"))
+                }
+                elevation = dp(6).toFloat()
+                setPadding(dp(10), 0, dp(10), 0)
+                setOnClickListener {
+                    isEnabled = false
+                    text = "WAIT…"
+                    val before = runCatching { snapshot() }.getOrNull()
+                    if (before == null || before.app.isBlank() || before.app == packageName) {
+                        text = "OPEN GAME"
+                        isEnabled = true
+                        return@setOnClickListener
+                    }
+                    if (isDeviceLocked() || before.nodes.any { it.password || (it.editable && it.focused) }) {
+                        text = "CLOSE INPUT"
+                        isEnabled = true
+                        return@setOnClickListener
+                    }
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                        text = "ANDROID 11+"
+                        isEnabled = true
+                        return@setOnClickListener
+                    }
+                    captureScreenshotBase64 { base64 ->
+                        if (base64.isNullOrBlank()) {
+                            visualCaptureView?.let { it.text = "RETRY"; it.isEnabled = true }
+                        } else {
+                            val after = runCatching { snapshot() }.getOrNull()
+                            if (after == null || after.app != before.app) {
+                                visualCaptureView?.let { it.text = "RETRY"; it.isEnabled = true }
+                            } else {
+                                VisualTemplateCaptureSession.store(base64, before.app, before.generation)
+                                hideVisualCaptureOverlay()
+                            }
+                        }
+                    }
+                }
+            }
+            val params = WindowManager.LayoutParams(
+                dp(92),
+                dp(48),
+                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                PixelFormat.TRANSLUCENT,
+            ).apply {
+                gravity = Gravity.TOP or Gravity.START
+                x = dp(8)
+                y = dp(160)
+            }
+            windowManager().addView(view, params)
+            visualCaptureView = view
+        } catch (_: Exception) {
+            visualCaptureView = null
+        }
+    }
+
+    fun hideVisualCaptureOverlay() {
+        val view = visualCaptureView ?: return
+        visualCaptureView = null
         try { windowManager().removeView(view) } catch (_: Exception) {}
     }
 
