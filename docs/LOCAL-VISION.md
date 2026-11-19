@@ -37,7 +37,7 @@ The next layer is a local, user-designated visual-template matcher. It stores a 
 
 This is deliberately **not automatic tapping**. A template match is only a candidate observation; the operator's existing action policy, stale-screen receipts, consent and independent verification still decide whether an action may happen. Blank/low-texture crops, wrong-app matches and weak scores fail closed.
 
-The current matcher is an engine foundation with JVM tests. A user-facing “learn this icon” crop/confirmation flow and private local template persistence still need to be added before it becomes available as an end-user feature.
+The Android Customize sheet now includes the user-facing crop/confirmation flow, private local template persistence, listing/deletion, and current-app matching. The native command returns candidates only; it does not actuate.
 
 
 ## Teach Jarvis an icon (Android)
