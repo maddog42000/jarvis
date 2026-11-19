@@ -221,10 +221,10 @@ internal object VisualTemplateMatcher {
             if (patchW < 8 || patchH < 8 || patchW > imageWidth || patchH > imageHeight) continue
             val lastX = imageWidth - patchW
             val lastY = imageHeight - patchH
-            // Bound work on high-resolution screens: at most about 20k candidate positions
+            // Bound work on high-resolution screens: at most about 5k candidate positions
             // per scale, while retaining the caller's requested minimum stride.
             val searchArea = (lastX + 1).toLong() * (lastY + 1).toLong()
-            val adaptiveStep = kotlin.math.ceil(kotlin.math.sqrt(searchArea / 20_000.0)).toInt()
+            val adaptiveStep = kotlin.math.ceil(kotlin.math.sqrt(searchArea / 5_000.0)).toInt()
             val step = maxOf(requestedStep, adaptiveStep, 2)
             val xs = mutableListOf<Int>()
             val ys = mutableListOf<Int>()
