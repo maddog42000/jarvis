@@ -20,6 +20,7 @@ import android.util.Base64
 import android.util.TypedValue
 import android.view.Display
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -270,16 +271,17 @@ class JarvisAccessibilityService : AccessibilityService() {
                         isEnabled = true
                         return@setOnClickListener
                     }
+                    // Remove the control before capture so it cannot appear in the learned crop.
+                    hideVisualCaptureOverlay()
                     captureScreenshotBase64 { base64 ->
                         if (base64.isNullOrBlank()) {
-                            visualCaptureView?.let { it.text = "RETRY"; it.isEnabled = true }
+                            showVisualCaptureOverlay()
                         } else {
                             val after = runCatching { snapshot() }.getOrNull()
                             if (after == null || after.app != before.app) {
-                                visualCaptureView?.let { it.text = "RETRY"; it.isEnabled = true }
+                                showVisualCaptureOverlay()
                             } else {
                                 VisualTemplateCaptureSession.store(base64, before.app, before.generation)
-                                hideVisualCaptureOverlay()
                             }
                         }
                     }
@@ -295,6 +297,36 @@ class JarvisAccessibilityService : AccessibilityService() {
                 gravity = Gravity.TOP or Gravity.START
                 x = dp(8)
                 y = dp(160)
+            }
+            var downX = 0f
+            var downY = 0f
+            var startX = 0
+            var startY = 0
+            var dragging = false
+            view.setOnTouchListener { _, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        downX = event.rawX
+                        downY = event.rawY
+                        startX = params.x
+                        startY = params.y
+                        dragging = false
+                        false
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        val dx = (event.rawX - downX).toInt()
+                        val dy = (event.rawY - downY).toInt()
+                        if (!dragging && (kotlin.math.abs(dx) > dp(8) || kotlin.math.abs(dy) > dp(8))) dragging = true
+                        if (dragging) {
+                            params.x = (startX + dx).coerceAtLeast(0)
+                            params.y = (startY + dy).coerceAtLeast(0)
+                            runCatching { windowManager().updateViewLayout(view, params) }
+                            true
+                        } else false
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> dragging
+                    else -> dragging
+                }
             }
             windowManager().addView(view, params)
             visualCaptureView = view
