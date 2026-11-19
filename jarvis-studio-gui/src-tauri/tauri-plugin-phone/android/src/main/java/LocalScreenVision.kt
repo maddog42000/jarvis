@@ -125,7 +125,7 @@ internal object LocalScreenVision {
                                 box to line.text
                             }
                         }
-                        continuation.resume(ScreenVisionPolicy.formatLines(rows).ifBlank { null })
+                        continuation.resume(ScreenVisionPolicy.formatLines(rows).takeIf { it.isNotBlank() })
                     }
                 }
                 .addOnFailureListener { error ->
