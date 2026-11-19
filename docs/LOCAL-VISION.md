@@ -9,8 +9,8 @@ This branch adds a first local-perception layer to the native Android phone oper
 - Adds recognized text and screenshot-relative bounds (0..1000) to the operator's next model prompt.
 - Runs OCR even when the selected model cannot accept images; only image-capable models receive the screenshot bytes.
 - Skips OCR when the accessibility snapshot contains a password field or a focused editable field.
-- Redacts credential-labelled OCR lines and email addresses; bounds are approximate and are for visual orientation, not a trusted action receipt.
-- Keeps decoded pixels and OCR output in memory only. Nothing is written to the task journal or persistent memory.
+- Heuristically redacts credential-labelled OCR lines and email addresses; this is not a guarantee that all sensitive text is detected. Bounds are approximate and are for visual orientation, not a trusted action receipt.
+- Decodes pixels in memory and does not write screenshots or OCR output to the task journal or persistent memory. **OCR text is included in the next operator prompt and is sent to the task's configured model provider**; image-capable routes also receive the screenshot as before.
 
 ## What it does not do yet
 
