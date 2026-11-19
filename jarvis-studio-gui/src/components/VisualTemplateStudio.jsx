@@ -88,17 +88,31 @@ export default function VisualTemplateStudio() {
 
   const capture = async () => {
     setBusy(true);
-    setStatus("Capturing the current app screen…");
+    setPreview(null);
+    setCrop(null);
     setMatches([]);
+    setStatus("Arming the floating capture control…");
+    try {
+      const result = await androidPlatform.visualTemplates.arm();
+      setStatus(result?.summary || "Could not arm screen capture. Check that JARVIS Accessibility is enabled.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const loadCaptured = async () => {
+    setBusy(true);
+    setStatus("Loading the captured game screen…");
     try {
       const result = await androidPlatform.visualTemplates.preview();
-      if (!result?.ok || !result.base64 || !result.appPackage || typeof result.generation !== "number") {
-        setStatus(result?.summary || "Could not capture a screen preview. Open the game and enable Accessibility.");
+      if (!result?.ok || !result.base64 || !result.appPackage || !result.previewToken) {
+        setStatus(result?.summary || "No captured screen is waiting. Arm capture, switch to the game, and tap the floating CAPTURE control.");
         return;
       }
       setPreview(result);
       setCrop(null);
-      setStatus("Preview ready for " + result.appPackage + ". Drag around one icon or control.");
+      setMatches([]);
+      setStatus("Captured " + result.appPackage + ". Drag around one icon or control.");
     } finally {
       setBusy(false);
     }
@@ -115,9 +129,7 @@ export default function VisualTemplateStudio() {
       const result = await androidPlatform.visualTemplates.save({
         id: newTemplateId(),
         label: label.trim(),
-        appPackage: preview.appPackage,
-        generation: preview.generation,
-        screenshotBase64: preview.base64,
+        previewToken: preview.previewToken,
         ...crop,
       });
       setStatus(result?.summary || "The icon could not be saved.");
@@ -136,7 +148,7 @@ export default function VisualTemplateStudio() {
     setBusy(true);
     setStatus("Looking for saved icons in the current app…");
     try {
-      const result = await androidPlatform.visualTemplates.find();
+      const result = await androidPlatform.visualTemplates.find(preview.previewToken);
       if (!result?.ok) {
         setStatus(result?.summary || "Could not search the current screen.");
         return;
@@ -167,14 +179,17 @@ export default function VisualTemplateStudio() {
     <section className="cz-sec" aria-labelledby="cz-visual-templates-title">
       <h3 id="cz-visual-templates-title">Teach Jarvis an icon</h3>
       <p className="cz-note">
-        Capture the game screen, drag a box around an icon, and name it. Jarvis stores a small visual fingerprint on this phone, scoped to that app. Screenshots are not saved.
+        Arm capture here, switch to RuneScape, and tap the small floating CAPTURE button. Return to JARVIS and load that screenshot. Drag around an icon and name it. Only a compact visual fingerprint is saved on this phone; the screenshot is temporary.
       </p>
       <div className="cz-preset-bar">
         <button type="button" className="btn btn--ghost" onClick={capture} disabled={busy}>
-          {busy ? "Working…" : "Capture current screen"}
+          {busy ? "Working…" : "Arm game capture"}
         </button>
-        <button type="button" className="btn btn--ghost" onClick={find} disabled={busy || templates.length === 0}>
-          Find saved icons
+        <button type="button" className="btn btn--ghost" onClick={loadCaptured} disabled={busy}>
+          Load captured screen
+        </button>
+        <button type="button" className="btn btn--ghost" onClick={find} disabled={busy || !preview || templates.length === 0}>
+          Find saved icons in preview
         </button>
       </div>
 
@@ -248,8 +263,13 @@ export default function VisualTemplateStudio() {
             <button type="button" className="btn btn--primary" onClick={save} disabled={busy || !crop || crop.w < 30 || crop.h < 30 || !label.trim()}>
               Save icon locally
             </button>
-            <button type="button" className="btn btn--ghost" onClick={() => { setPreview(null); setCrop(null); }} disabled={busy}>
-              Cancel
+            <button type="button" className="btn btn--ghost" onClick={async () => {
+              await androidPlatform.visualTemplates.discard(preview.previewToken);
+              setPreview(null);
+              setCrop(null);
+              setMatches([]);
+            }} disabled={busy}>
+              Discard preview
             </button>
           </div>
         </div>
