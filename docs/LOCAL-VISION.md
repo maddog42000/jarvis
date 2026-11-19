@@ -29,3 +29,12 @@ The upstream documentation estimates approximately 4 MB of APK size increase per
 3. On a physical device, test ordinary app screens, game HUD text, screen rotation, secure/password screens, and rapid screen changes.
 4. Compare operator task latency and model input size with OCR enabled versus disabled.
 5. Only after that, add app-specific visual templates and screen profiles.
+
+
+## Icon/template matching foundation
+
+The next layer is a local, user-designated visual-template matcher. It stores a compact normalized grayscale fingerprint for a crop, then searches later screenshots at nearby scales and returns the best approximate bounds plus a confidence score. Templates are scoped to the app package that they were learned in.
+
+This is deliberately **not automatic tapping**. A template match is only a candidate observation; the operator's existing action policy, stale-screen receipts, consent and independent verification still decide whether an action may happen. Blank/low-texture crops, wrong-app matches and weak scores fail closed.
+
+The current matcher is an engine foundation with JVM tests. A user-facing “learn this icon” crop/confirmation flow and private local template persistence still need to be added before it becomes available as an end-user feature.
