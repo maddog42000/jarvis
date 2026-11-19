@@ -1896,6 +1896,7 @@ class PhonePlugin(private val activity: Activity) : Plugin(activity) {
                 })
             }
             "save" -> {
+                if (args.previewToken.isBlank()) return fail("Load a captured game screenshot before saving.", "preview_expired")
                 if (args.screenshotBase64.isNotBlank()) {
                     return fail("Screenshots are retained in native memory; send only the preview token.", "unexpected_image")
                 }
@@ -1945,6 +1946,7 @@ class PhonePlugin(private val activity: Activity) : Plugin(activity) {
                 })
             }
             "find" -> {
+                if (args.previewToken.isBlank()) return fail("Load a captured game screenshot before searching.", "preview_expired")
                 val preview = VisualTemplateCaptureSession.peek(args.previewToken)
                     ?: return fail("Capture a game screen first, then load it here.", "preview_expired")
                 autonomyScope.launch(Dispatchers.Default) {
