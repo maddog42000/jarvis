@@ -124,7 +124,7 @@ internal object VisualTemplateStore {
         val array = JSONArray()
         templates.takeLast(MAX_TEMPLATES).forEach { template ->
             val features = JSONArray()
-            template.features.forEach(features::put)
+            template.features.forEach { features.put(it.toDouble()) }
             array.put(
                 JSONObject()
                     .put("id", template.id)
