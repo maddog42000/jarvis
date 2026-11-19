@@ -479,6 +479,7 @@ internal class VisualTemplatesArgs {
     var appPackage: String = ""
     var generation: Long = -1L
     var screenshotBase64: String = ""
+    var previewToken: String = ""
     var x: Int = 0
     var y: Int = 0
     var w: Int = 0
@@ -1862,61 +1863,52 @@ class PhonePlugin(private val activity: Activity) : Plugin(activity) {
             })
         }
         when (args.action) {
-            "preview" -> {
+            "arm" -> {
                 val svc = service() ?: return fail("Enable JARVIS Accessibility first.", "service_off")
                 if (svc.isDeviceLocked()) return fail("Unlock the phone before learning an icon.", "device_locked")
-                val before = runCatching { svc.snapshot() }.getOrNull()
-                    ?: return fail("The current screen could not be inspected.", "screen_unavailable")
-                if (before.app.isBlank() || before.app == activity.packageName) {
-                    return fail("Open the app containing the icon before learning it.", "wrong_app")
+                VisualTemplateCaptureSession.discard()
+                if (!svc.showVisualCaptureOverlay()) {
+                    return fail("Could not show the capture control over other apps.", "overlay_unavailable")
                 }
-                if (before.nodes.any { it.password || (it.editable && it.focused) }) {
-                    return fail("Close password or text-entry fields before capturing a template.", "sensitive_screen")
-                }
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                    return fail("Screen capture requires Android 11 or newer.", "unsupported_android")
-                }
-                svc.captureScreenshotBase64 { base64 ->
-                    if (base64.isNullOrBlank()) {
-                        fail("Could not capture the current screen.", "capture_failed")
-                    } else {
-                        val after = runCatching { svc.snapshot() }.getOrNull()
-                        if (after == null || after.app != before.app || after.generation != before.generation) {
-                            fail("The screen changed during capture. Try again.", "stale_observation")
-                        } else {
-                            invoke.resolve(JSObject().apply {
-                                put("ok", true)
-                                put("summary", "Captured a temporary screen preview.")
-                                put("base64", base64)
-                                put("appPackage", before.app)
-                                put("generation", before.generation)
-                            })
-                        }
-                    }
-                }
+                invoke.resolve(JSObject().apply {
+                    put("ok", true)
+                    put("summary", "Switch to the target app and tap the floating CAPTURE control when the icon is visible.")
+                })
+            }
+            "take_preview" -> {
+                val preview = VisualTemplateCaptureSession.peek(args.previewToken)
+                    ?: return fail("No recent game screenshot is waiting. Start a new capture.", "preview_expired")
+                invoke.resolve(JSObject().apply {
+                    put("ok", true)
+                    put("summary", "Loaded the captured app screen.")
+                    put("base64", preview.base64)
+                    put("appPackage", preview.appPackage)
+                    put("generation", preview.generation)
+                    put("previewToken", preview.token)
+                })
+            }
+            "discard" -> {
+                val discarded = VisualTemplateCaptureSession.discard(args.previewToken)
+                service()?.hideVisualCaptureOverlay()
+                invoke.resolve(JSObject().apply {
+                    put("ok", true)
+                    put("summary", if (discarded) "Discarded the temporary screenshot." else "No temporary screenshot was waiting.")
+                })
             }
             "save" -> {
-                val svc = service() ?: return fail("Enable JARVIS Accessibility first.", "service_off")
-                if (svc.isDeviceLocked()) return fail("Unlock the phone before saving an icon.", "device_locked")
-                if (args.screenshotBase64.length > 12_000_000) {
-                    return fail("The preview is too large. Capture the screen again.", "image_too_large")
+                if (args.screenshotBase64.isNotBlank()) {
+                    return fail("Screenshots are retained in native memory; send only the preview token.", "unexpected_image")
                 }
-                val snap = runCatching { svc.snapshot() }.getOrNull()
-                    ?: return fail("The current screen could not be inspected.", "screen_unavailable")
-                if (snap.app != args.appPackage || snap.generation != args.generation) {
-                    return fail("The app screen changed. Capture a fresh preview before saving.", "stale_observation")
-                }
-                if (snap.nodes.any { it.password || (it.editable && it.focused) }) {
-                    return fail("Close password or text-entry fields before saving a template.", "sensitive_screen")
-                }
+                val preview = VisualTemplateCaptureSession.consume(args.previewToken)
+                    ?: return fail("The captured screenshot expired. Capture the game screen again.", "preview_expired")
                 autonomyScope.launch(Dispatchers.Default) {
                     val saved = VisualTemplateStore.save(
                         activity.applicationContext,
-                        args.screenshotBase64,
+                        preview.base64,
                         VisionBox(args.x, args.y, args.w, args.h),
                         args.id,
                         args.label,
-                        snap.app,
+                        preview.appPackage,
                     )
                     if (saved == null) {
                         fail("That crop is too small, blank, or invalid. Select a larger icon area.", "invalid_template")
@@ -1952,55 +1944,33 @@ class PhonePlugin(private val activity: Activity) : Plugin(activity) {
                 })
             }
             "find" -> {
-                val svc = service() ?: return fail("Enable JARVIS Accessibility first.", "service_off")
-                if (svc.isDeviceLocked()) return fail("Unlock the phone before matching icons.", "device_locked")
-                val before = runCatching { svc.snapshot() }.getOrNull()
-                    ?: return fail("The current screen could not be inspected.", "screen_unavailable")
-                if (before.app.isBlank() || before.app == activity.packageName) {
-                    return fail("Open the app containing the saved icons first.", "wrong_app")
-                }
-                if (before.nodes.any { it.password || (it.editable && it.focused) }) {
-                    return fail("Close password or text-entry fields before matching icons.", "sensitive_screen")
-                }
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                    return fail("Screen capture requires Android 11 or newer.", "unsupported_android")
-                }
-                svc.captureScreenshotBase64 { base64 ->
-                    if (base64.isNullOrBlank()) {
-                        fail("Could not capture the current screen.", "capture_failed")
-                    } else {
-                        val after = runCatching { svc.snapshot() }.getOrNull()
-                        if (after == null || after.app != before.app || after.generation != before.generation) {
-                            fail("The screen changed during matching. Try again.", "stale_observation")
-                        } else {
-                            autonomyScope.launch(Dispatchers.Default) {
-                                val matches = VisualTemplateStore.find(
-                                    activity.applicationContext, base64, before.app,
-                                )
-                                val rows = JSONArray()
-                                matches.forEach { found ->
-                                    rows.put(
-                                        JSONObject()
-                                            .put("id", found.id)
-                                            .put("label", found.label)
-                                            .put("appPackage", found.appPackage)
-                                            .put("confidence", found.match.confidence.toDouble())
-                                            .put("x", found.match.bounds.x)
-                                            .put("y", found.match.bounds.y)
-                                            .put("w", found.match.bounds.w)
-                                            .put("h", found.match.bounds.h)
-                                    )
-                                }
-                                invoke.resolve(JSObject().apply {
-                                    put("ok", true)
-                                    put("matches", rows)
-                                    put("appPackage", before.app)
-                                    put("generation", before.generation)
-                                    put("summary", if (rows.length() == 0) "No saved icons matched this screen." else "Found " + rows.length() + " possible icon matches.")
-                                })
-                            }
-                        }
+                val preview = VisualTemplateCaptureSession.peek(args.previewToken)
+                    ?: return fail("Capture a game screen first, then load it here.", "preview_expired")
+                autonomyScope.launch(Dispatchers.Default) {
+                    val matches = VisualTemplateStore.find(
+                        activity.applicationContext, preview.base64, preview.appPackage,
+                    )
+                    val rows = JSONArray()
+                    matches.forEach { found ->
+                        rows.put(
+                            JSONObject()
+                                .put("id", found.id)
+                                .put("label", found.label)
+                                .put("appPackage", found.appPackage)
+                                .put("confidence", found.match.confidence.toDouble())
+                                .put("x", found.match.bounds.x)
+                                .put("y", found.match.bounds.y)
+                                .put("w", found.match.bounds.w)
+                                .put("h", found.match.bounds.h)
+                        )
                     }
+                    invoke.resolve(JSObject().apply {
+                        put("ok", true)
+                        put("matches", rows)
+                        put("appPackage", preview.appPackage)
+                        put("generation", preview.generation)
+                        put("summary", if (rows.length() == 0) "No saved icons matched this captured screen." else "Found " + rows.length() + " possible icon matches.")
+                    })
                 }
             }
             else -> fail("Unknown visual-template action.", "invalid_action")
